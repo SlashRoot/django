@@ -5,7 +5,7 @@ from functools import partial
 from importlib import import_module
 from inspect import getargspec
 
-from django.conf import settings
+
 from django.template.context import (BaseContext, Context, RequestContext,
     ContextPopException)
 from django.utils.itercompat import is_iterable
@@ -21,7 +21,7 @@ from django.utils.module_loading import module_has_submodule
 from django.utils import six
 from django.utils.timezone import template_localtime
 from django.utils.encoding import python_2_unicode_compatible
-
+from django.utils.unsetting import uses_settings
 
 TOKEN_TEXT = 0
 TOKEN_VAR = 1
@@ -113,14 +113,17 @@ class StringOrigin(Origin):
         return self.source
 
 class Template(object):
+
+    @uses_settings("TEMPLATE_DEBUG", "debug")
     def __init__(self, template_string, origin=None,
-                 name='<Unknown Template>'):
+                 name='<Unknown Template>',
+                 debug=False):
         try:
             template_string = force_text(template_string)
         except UnicodeDecodeError:
             raise TemplateEncodingError("Templates can only be constructed "
                                         "from unicode or UTF-8 strings.")
-        if settings.TEMPLATE_DEBUG and origin is None:
+        if debug and origin is None:
             origin = StringOrigin(template_string)
         self.nodelist = compile_string(template_string, origin)
         self.name = name
@@ -142,9 +145,10 @@ class Template(object):
         finally:
             context.render_context.pop()
 
-def compile_string(template_string, origin):
+@uses_settings("TEMPLATE_DEBUG", "debug")
+def compile_string(template_string, origin, debug=False):
     "Compiles template_string into NodeList ready for rendering"
-    if settings.TEMPLATE_DEBUG:
+    if debug:
         from django.template.debug import DebugLexer, DebugParser
         lexer_class, parser_class = DebugLexer, DebugParser
     else:
@@ -580,7 +584,8 @@ class FilterExpression(object):
         self.filters = filters
         self.var = var_obj
 
-    def resolve(self, context, ignore_failures=False):
+    @uses_settings("TEMPLATE_STRING_IF_INVALID", "string_if_invalid")
+    def resolve(self, context, ignore_failures=False, string_if_invalid=''):
         if isinstance(self.var, Variable):
             try:
                 obj = self.var.resolve(context)
@@ -588,15 +593,15 @@ class FilterExpression(object):
                 if ignore_failures:
                     obj = None
                 else:
-                    if settings.TEMPLATE_STRING_IF_INVALID:
+                    if string_if_invalid:
                         global invalid_var_format_string
                         if invalid_var_format_string is None:
-                            invalid_var_format_string = '%s' in settings.TEMPLATE_STRING_IF_INVALID
+                            invalid_var_format_string = '%s' in string_if_invalid
                         if invalid_var_format_string:
-                            return settings.TEMPLATE_STRING_IF_INVALID % self.var
-                        return settings.TEMPLATE_STRING_IF_INVALID
+                            return string_if_invalid % self.var
+                        return string_if_invalid
                     else:
-                        obj = settings.TEMPLATE_STRING_IF_INVALID
+                        obj = string_if_invalid
         else:
             obj = self.var
         for func, args in self.filters:
@@ -750,7 +755,8 @@ class Variable(object):
     def __str__(self):
         return self.var
 
-    def _resolve_lookup(self, context):
+    @uses_settings("TEMPLATE_STRING_IF_INVALID", "string_if_invalid")
+    def _resolve_lookup(self, context, string_if_invalid=''):
         """
         Performs resolution of a real variable (i.e. not a literal) against the
         given context.
@@ -784,17 +790,17 @@ class Variable(object):
                     if getattr(current, 'do_not_call_in_templates', False):
                         pass
                     elif getattr(current, 'alters_data', False):
-                        current = settings.TEMPLATE_STRING_IF_INVALID
+                        current = string_if_invalid
                     else:
                         try: # method call (assuming no args required)
                             current = current()
                         except TypeError: # arguments *were* required
                             # GOTCHA: This will also catch any TypeError
                             # raised in the function itself.
-                            current = settings.TEMPLATE_STRING_IF_INVALID  # invalid method call
+                            current = string_if_invalid  # invalid method call
         except Exception as e:
             if getattr(e, 'silent_variable_failure', False):
-                current = settings.TEMPLATE_STRING_IF_INVALID
+                current = string_if_invalid
             else:
                 raise
 
@@ -1275,7 +1281,8 @@ def import_library(taglib_module):
 
 templatetags_modules = []
 
-def get_templatetags_modules():
+@uses_settings("INSTALLED_APPS", "installed_apps")
+def get_templatetags_modules(installed_apps=None):
     """
     Return the list of all available template tag modules.
 
@@ -1287,7 +1294,7 @@ def get_templatetags_modules():
         # Populate list once per process. Mutate the local list first, and
         # then assign it to the global name to ensure there are no cases where
         # two threads try to populate it simultaneously.
-        for app_module in ['django'] + list(settings.INSTALLED_APPS):
+        for app_module in ['django'] + list(installed_apps):
             try:
                 templatetag_module = '%s.templatetags' % app_module
                 import_module(templatetag_module)

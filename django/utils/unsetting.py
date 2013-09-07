@@ -44,6 +44,19 @@ def uses_settings(setting_name_or_dict, kw_arg=None, fallback_trigger_value=OVER
     def _dec(func):
         setting_map = {}
         arg_names = inspect.getargspec(func).args
+
+        # http://stackoverflow.com/questions/8793233/python-can-a-decorator-determine-if-a-function-is-being-defined-inside-a-class
+        frames = inspect.stack()
+        defined_in_class = False
+        if len(frames) > 2:
+            maybe_class_frame = frames[2]
+            statement_list = maybe_class_frame[4]
+            first_statment = statement_list[0]
+            if first_statment.strip().startswith('class '):
+                defined_in_class = True
+
+        func.first_arg_name = arg_names.pop(0) if defined_in_class else None
+
         kw_defaults = inspect.getargspec(func).defaults
         if isinstance(setting_name_or_dict, dict):
             for k,v in setting_name_or_dict.items():
@@ -58,6 +71,13 @@ def uses_settings(setting_name_or_dict, kw_arg=None, fallback_trigger_value=OVER
 
         def _wrapper(*args, **kwargs):
             new_kwargs = kwargs.copy()
+
+            # If we have set a first_arg_name for the function, we know it's a method
+            # We need to re-apply that arg here.
+            if func.first_arg_name:
+                args = list(args)  # args will need to be mutable...
+                new_kwargs[func.first_arg_name] = args.pop(0) # So that we can pop the self off.
+
             max_args_index = 1000
             for counter, arg in enumerate(arg_names):
                 try:
@@ -76,6 +96,8 @@ def uses_settings(setting_name_or_dict, kw_arg=None, fallback_trigger_value=OVER
                 if setting_map.has_key(arg) \
                         and new_kwargs[arg] == setting_map[arg].fallback_trigger_value:
                     new_kwargs[arg] = getattr(settings, setting_map[arg].setting)
+
+
 
             return func(*args[:max_args_index], **new_kwargs)
         update_wrapper(_wrapper, func)

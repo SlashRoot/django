@@ -207,8 +207,8 @@ class EmailMessage(object):
     content_subtype = 'plain'
     mixed_subtype = 'mixed'
 
-    @method_decorator(uses_settings({'DEFAULT_FROM_EMAIL': ['from_email', None],
-                                     'DEFAULT_CHARSET': ['encoding', 'utf-8']}))
+    @uses_settings({'DEFAULT_FROM_EMAIL': ['from_email', None],
+                                     'DEFAULT_CHARSET': ['encoding', 'utf-8']})
     def __init__(self, subject='', body='', from_email=None, to=None, bcc=None,
                  connection=None, attachments=None, headers=None, cc=None, encoding='utf-8'):
         """

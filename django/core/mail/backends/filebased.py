@@ -13,7 +13,7 @@ from django.utils.unsetting import uses_settings
 
 class EmailBackend(ConsoleEmailBackend):
 
-    @method_decorator(uses_settings('EMAIL_FILE_PATH', 'file_path'))
+    @uses_settings('EMAIL_FILE_PATH', 'file_path')
     def __init__(self, *args, **kwargs):
         self._fname = None
         if 'file_path' in kwargs:
