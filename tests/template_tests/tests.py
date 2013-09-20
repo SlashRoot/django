@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
+from django.template.base import compile_string
 
 if __name__ == '__main__':
     # When running this file in isolation, we need to set up the configuration
@@ -1855,6 +1856,21 @@ class TemplateTagLoading(unittest.TestCase):
         self.assertRaises(template.TemplateSyntaxError, template.Template, ttext)
         try:
             template.Template(ttext)
+        except template.TemplateSyntaxError as e:
+            self.assertTrue('ImportError' in e.args[0])
+            self.assertTrue('Xtemplate' in e.args[0])
+        
+    def test_unsetting_load_error_egg(self):
+        '''
+        #unsetting version of the previous test.
+        '''
+        ttext = "{% load broken_egg %}"
+        egg_name = '%s/tagsegg.egg' % self.egg_dir
+        sys.path.append(egg_name)
+        installed_apps=['tagsegg']
+        self.assertRaises(template.TemplateSyntaxError, template.Template, ttext, installed_apps=installed_apps)
+        try:
+            compile_string(ttext, origin=None, installed_apps=installed_apps)
         except template.TemplateSyntaxError as e:
             self.assertTrue('ImportError' in e.args[0])
             self.assertTrue('Xtemplate' in e.args[0])
