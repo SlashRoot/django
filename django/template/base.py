@@ -21,6 +21,7 @@ from django.utils import six
 from django.utils.timezone import template_localtime
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.unsetting import uses_settings
+import errno
 
 TOKEN_TEXT = 0
 TOKEN_VAR = 1
@@ -113,10 +114,12 @@ class StringOrigin(Origin):
 
 class Template(object):
 
-    @uses_settings("TEMPLATE_DEBUG", "debug")
+    @uses_settings({"TEMPLATE_DEBUG": "debug",
+                    "INSTALLED_APPS": "installed_apps"})
     def __init__(self, template_string, origin=None,
                  name='<Unknown Template>',
-                 debug=False):
+                 debug=False,
+                 installed_apps=None):
         try:
             template_string = force_text(template_string)
         except UnicodeDecodeError:
@@ -124,7 +127,7 @@ class Template(object):
                                         "from unicode or UTF-8 strings.")
         if debug and origin is None:
             origin = StringOrigin(template_string)
-        self.nodelist = compile_string(template_string, origin)
+        self.nodelist = compile_string(template_string, origin, debug=debug, installed_apps=installed_apps)
         self.name = name
         self.origin = origin
 
@@ -144,8 +147,10 @@ class Template(object):
         finally:
             context.render_context.pop()
 
-@uses_settings("TEMPLATE_DEBUG", "debug")
-def compile_string(template_string, origin, debug=False):
+
+@uses_settings({"TEMPLATE_DEBUG": "debug",
+                "INSTALLED_APPS": "installed_apps"})
+def compile_string(template_string, origin, debug=False, installed_apps=None):
     "Compiles template_string into NodeList ready for rendering"
     if debug:
         from django.template.debug import DebugLexer, DebugParser
@@ -154,7 +159,7 @@ def compile_string(template_string, origin, debug=False):
         lexer_class, parser_class = Lexer, Parser
     lexer = lexer_class(template_string, origin)
     parser = parser_class(lexer.tokenize())
-    return parser.parse()
+    return parser.parse(installed_apps=installed_apps)
 
 class Token(object):
     def __init__(self, token_type, contents):
@@ -241,8 +246,9 @@ class Parser(object):
         self.filters = {}
         for lib in builtins:
             self.add_library(lib)
-
-    def parse(self, parse_until=None):
+    
+    @uses_settings("INSTALLED_APPS", "installed_apps")
+    def parse(self, parse_until=None, installed_apps=None):
         if parse_until is None:
             parse_until = []
         nodelist = self.create_nodelist()
@@ -279,9 +285,15 @@ class Parser(object):
                 except KeyError:
                     self.invalid_block_tag(token, command, parse_until)
                 try:
-                    compiled_result = compile_func(self, token)
+                    compiled_result = compile_func(self, token, installed_apps=installed_apps)
                 except TemplateSyntaxError as e:
                     if not self.compile_function_error(token, e):
+                        raise
+                except TypeError, e:
+                    # Not every compile function needs installed_apps.  This is an #unsettings workaround.
+                    if "got an unexpected keyword argument 'installed_apps'" in e.args[0]:   
+                        compiled_result = compile_func(self, token)
+                    else:
                         raise
                 self.extend_nodelist(nodelist, compiled_result, token)
                 self.exit_command()
@@ -1291,7 +1303,8 @@ def get_templatetags_modules(installed_apps=None):
         templatetags_modules = _templatetags_modules
     return templatetags_modules
 
-def get_library(library_name):
+@uses_settings("INSTALLED_APPS", "installed_apps")
+def get_library(library_name, installed_apps=None):
     """
     Load the template library module with the given name.
 
@@ -1305,7 +1318,7 @@ def get_library(library_name):
     """
     lib = libraries.get(library_name, None)
     if not lib:
-        templatetags_modules = get_templatetags_modules()
+        templatetags_modules = get_templatetags_modules(installed_apps)
         tried_modules = []
         for module in templatetags_modules:
             taglib_module = '%s.%s' % (module, library_name)

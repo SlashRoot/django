@@ -22,6 +22,7 @@ from django.utils.safestring import mark_safe
 from django.utils.html import format_html
 from django.utils import six
 from django.utils import timezone
+from django.utils.unsetting import uses_settings
 
 register = Library()
 
@@ -1036,8 +1037,9 @@ def ssi(parser, token):
     filepath = parser.compile_filter(bits[1])
     return SsiNode(filepath, parsed)
 
+@uses_settings("INSTALLED_APPS", "installed_apps")
 @register.tag
-def load(parser, token):
+def load(parser, token, installed_apps=None):
     """
     Loads a custom template tag set.
 
@@ -1057,7 +1059,7 @@ def load(parser, token):
     if len(bits) >= 4 and bits[-2] == "from":
         try:
             taglib = bits[-1]
-            lib = get_library(taglib)
+            lib = get_library(taglib, installed_apps)
         except InvalidTemplateLibrary as e:
             raise TemplateSyntaxError("'%s' is not a valid tag library: %s" %
                                       (taglib, e))
@@ -1079,7 +1081,7 @@ def load(parser, token):
         for taglib in bits[1:]:
             # add the library to the parser
             try:
-                lib = get_library(taglib)
+                lib = get_library(taglib, installed_apps)
                 parser.add_library(lib)
             except InvalidTemplateLibrary as e:
                 raise TemplateSyntaxError("'%s' is not a valid tag library: %s" %
