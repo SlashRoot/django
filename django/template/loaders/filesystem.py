@@ -6,10 +6,13 @@ from django.conf import settings
 from django.template.base import TemplateDoesNotExist
 from django.template.loader import BaseLoader
 from django.utils._os import safe_join
+from django.utils.unsetting import uses_settings
+
 
 class Loader(BaseLoader):
     is_usable = True
-
+    
+    uses_settings
     def get_template_sources(self, template_name, template_dirs=None):
         """
         Returns the absolute paths to "template_name", when appended to each
