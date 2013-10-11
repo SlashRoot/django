@@ -3,7 +3,7 @@ import sys
 import time
 import warnings
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db.utils import load_backend
 from django.utils.encoding import force_bytes
 from django.utils.six.moves import input
@@ -313,7 +313,8 @@ class BaseDatabaseCreation(object):
             ";",
         ]
 
-    def create_test_db(self, verbosity=1, autoclobber=False):
+    @uses_settings({'DATABASES': 'databases', 'CACHES': 'caches'})
+    def create_test_db(self, verbosity=1, autoclobber=False, caches=None, databases=None):
         """
         Creates a test database, prompting the user for confirmation if the
         database already exists. Returns the name of the test database created.
@@ -327,13 +328,13 @@ class BaseDatabaseCreation(object):
             test_db_repr = ''
             if verbosity >= 2:
                 test_db_repr = " ('%s')" % test_database_name
-            print("Creating test database for alias '%s'%s..." % (
+            print("Creating test database for alias '%s'%s..." % ( 
                 self.connection.alias, test_db_repr))
 
         self._create_test_db(verbosity, autoclobber)
 
         self.connection.close()
-        settings.DATABASES[self.connection.alias]["NAME"] = test_database_name
+        databases[self.connection.alias]["NAME"] = test_database_name
         self.connection.settings_dict["NAME"] = test_database_name
 
         # Report migrate messages at one level lower than that requested.
@@ -358,7 +359,7 @@ class BaseDatabaseCreation(object):
 
         from django.core.cache import get_cache
         from django.core.cache.backends.db import BaseDatabaseCache
-        for cache_alias in settings.CACHES:
+        for cache_alias in caches:
             cache = get_cache(cache_alias)
             if isinstance(cache, BaseDatabaseCache):
                 call_command('createcachetable', cache._table,
