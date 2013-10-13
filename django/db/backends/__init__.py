@@ -11,7 +11,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from importlib import import_module
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db import DEFAULT_DB_ALIAS
 from django.db.backends.signals import connection_created
 from django.db.backends import util
@@ -149,13 +149,14 @@ class BaseDatabaseWrapper(object):
 
     ##### Generic wrappers for PEP-249 connection methods #####
 
-    def cursor(self):
+    @uses_settings({'DEBUG':'debug'})
+    def cursor(self, debug=None):
         """
         Creates a cursor, opening a connection if necessary.
         """
         self.validate_thread_sharing()
         if (self.use_debug_cursor or
-            (self.use_debug_cursor is None and settings.DEBUG)):
+            (self.use_debug_cursor is None and debug)):
             cursor = self.make_debug_cursor(self._cursor())
         else:
             cursor = util.CursorWrapper(self._cursor(), self)
@@ -1142,7 +1143,8 @@ class BaseDatabaseOperations(object):
         second = datetime.date(value, 12, 31)
         return [first, second]
 
-    def year_lookup_bounds_for_datetime_field(self, value):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def year_lookup_bounds_for_datetime_field(self, value, use_tz=None):
         """
         Returns a two-elements list with the lower and upper bound to be used
         with a BETWEEN operator to query a DateTimeField value using a year
@@ -1152,7 +1154,7 @@ class BaseDatabaseOperations(object):
         """
         first = datetime.datetime(value, 1, 1)
         second = datetime.datetime(value, 12, 31, 23, 59, 59, 999999)
-        if settings.USE_TZ:
+        if use_tz:
             tz = timezone.get_current_timezone()
             first = timezone.make_aware(first, tz)
             second = timezone.make_aware(second, tz)
