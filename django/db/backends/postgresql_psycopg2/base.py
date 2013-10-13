@@ -6,7 +6,7 @@ Requires psycopg 2: http://initd.org/projects/psycopg2
 import logging
 import sys
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db.backends import (BaseDatabaseFeatures, BaseDatabaseWrapper,
     BaseDatabaseValidation)
 from django.db.backends.postgresql_psycopg2.operations import DatabaseOperations
@@ -125,10 +125,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def get_new_connection(self, conn_params):
         return Database.connect(**conn_params)
 
-    def init_connection_state(self):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def init_connection_state(self use_tz=None):
         settings_dict = self.settings_dict
         self.connection.set_client_encoding('UTF8')
-        tz = 'UTC' if settings.USE_TZ else settings_dict.get('TIME_ZONE')
+        tz = 'UTC' if use_tz else settings_dict.get('TIME_ZONE')
         if tz:
             try:
                 get_parameter_status = self.connection.get_parameter_status
@@ -146,9 +147,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 )
         self.connection.set_isolation_level(self.isolation_level)
 
-    def create_cursor(self):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def create_cursor(self, use_tz=None):
         cursor = self.connection.cursor()
-        cursor.tzinfo_factory = utc_tzinfo_factory if settings.USE_TZ else None
+        cursor.tzinfo_factory = utc_tzinfo_factory if use_tz else None
         return cursor
 
     def close(self):
