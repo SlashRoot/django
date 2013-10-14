@@ -196,22 +196,23 @@ class BaseDatabaseWrapper(object):
 
     ##### Backend-specific savepoint management methods #####
 
-    def _savepoint(self, sid):
+    def _savepoint(self, sid, debug=None):
         self.cursor().execute(self.ops.savepoint_create_sql(sid))
 
-    def _savepoint_rollback(self, sid):
+    def _savepoint_rollback(self, sid, debug=None):
         self.cursor().execute(self.ops.savepoint_rollback_sql(sid))
 
-    def _savepoint_commit(self, sid):
+    def _savepoint_commit(self, sid, debug=None):
         self.cursor().execute(self.ops.savepoint_commit_sql(sid))
 
-    def _savepoint_allowed(self):
+    def _savepoint_allowed(self, debug=None):
         # Savepoints cannot be created outside a transaction
         return self.features.uses_savepoints and not self.get_autocommit()
 
     ##### Generic savepoint management methods #####
 
-    def savepoint(self):
+    @uses_settings({'DEBUG':'debug'})
+    def savepoint(self, debug=None):
         """
         Creates a savepoint inside the current transaction. Returns an
         identifier for the savepoint that will be used for the subsequent
@@ -231,7 +232,8 @@ class BaseDatabaseWrapper(object):
 
         return sid
 
-    def savepoint_rollback(self, sid):
+    @uses_settings({'DEBUG':'debug'})
+    def savepoint_rollback(self, sid, debug=None):
         """
         Rolls back to a savepoint. Does nothing if savepoints are not supported.
         """
@@ -241,7 +243,8 @@ class BaseDatabaseWrapper(object):
         self.validate_thread_sharing()
         self._savepoint_rollback(sid)
 
-    def savepoint_commit(self, sid):
+    @uses_settings({'DEBUG':'debug'})
+    def savepoint_commit(self, sid, debug=None):
         """
         Releases a savepoint. Does nothing if savepoints are not supported.
         """
