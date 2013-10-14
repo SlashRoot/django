@@ -126,7 +126,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         return Database.connect(**conn_params)
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def init_connection_state(self use_tz=None):
+    def init_connection_state(self, use_tz=None):
         settings_dict = self.settings_dict
         self.connection.set_client_encoding('UTF8')
         tz = 'UTC' if use_tz else settings_dict.get('TIME_ZONE')

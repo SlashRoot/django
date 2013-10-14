@@ -53,7 +53,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return sql, params
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def datetime_trunc_sql(self, lookup_type, field_name, tzname):
+    def datetime_trunc_sql(self, lookup_type, field_name, tzname, use_tz=None):
         if use_tz:
             field_name = "%s AT TIME ZONE %%s" % field_name
             params = [tzname]
