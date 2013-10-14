@@ -7,7 +7,7 @@ from importlib import import_module
 import os
 import sys
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import module_has_submodule
 from django.utils._os import upath
@@ -80,7 +80,8 @@ class BaseAppCache(object):
         # only_installed arguments to get_model[s]
         self.loads_installed = False
 
-    def _populate(self):
+    @uses_settings({'INSTALLED_APPS':'installed_apps'})
+    def _populate(self, installed_apps=None):
         """
         Stub method - this base class does no auto-loading.
         """
@@ -104,7 +105,7 @@ class BaseAppCache(object):
         try:
             if self.loaded:
                 return
-            for app_name in settings.INSTALLED_APPS:
+            for app_name in installed_apps:
                 if app_name in self.handled:
                     continue
                 self.load_app(app_name, True)
@@ -209,7 +210,8 @@ class BaseAppCache(object):
             app_paths.append(self._get_app_path(app))
         return app_paths
 
-    def get_app(self, app_label, emptyOK=False):
+    @uses_settings({'INSTALLED_APPS':'installed_apps'})
+    def get_app(self, app_label, emptyOK=False, installed_apps=None):
         """
         Returns the module containing the models for the given app_label.
 
@@ -221,7 +223,7 @@ class BaseAppCache(object):
         self._populate()
         imp.acquire_lock()
         try:
-            for app_name in settings.INSTALLED_APPS:
+            for app_name in installed_apps:
                 if app_label == app_name.split('.')[-1]:
                     mod = self.load_app(app_name, False)
                     if mod is None and not emptyOK:
@@ -349,9 +351,10 @@ class BaseAppCache(object):
             model_dict[model_name] = model
         self._get_models_cache.clear()
 
-    def set_available_apps(self, available):
-        if not set(available).issubset(set(settings.INSTALLED_APPS)):
-            extra = set(available) - set(settings.INSTALLED_APPS)
+    @uses_settings({'INSTALLED_APPS':'installed_apps'})
+    def set_available_apps(self, available, installed_apps=None):
+        if not set(available).issubset(set(installed_apps)):
+            extra = set(available) - set(installed_apps)
             raise ValueError("Available apps isn't a subset of installed "
                 "apps, extra apps: " + ", ".join(extra))
         self.available_apps = set(app.rsplit('.', 1)[-1] for app in available)
