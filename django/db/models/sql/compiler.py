@@ -1,6 +1,6 @@
 import datetime
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import FieldError
 from django.db.backends.util import truncate_name
 from django.db.models.constants import LOOKUP_SEP
@@ -1066,7 +1066,8 @@ class SQLDateCompiler(SQLCompiler):
 
 
 class SQLDateTimeCompiler(SQLCompiler):
-    def results_iter(self):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def results_iter(self, use_tz=None):
         """
         Returns an iterator over the results from executing this query.
         """
@@ -1088,7 +1089,7 @@ class SQLDateTimeCompiler(SQLCompiler):
                     datetime = typecast_timestamp(str(datetime))
                 # Datetimes are artifically returned in UTC on databases that
                 # don't support time zone. Restore the zone used in the query.
-                if settings.USE_TZ:
+                if use_tz:
                     if datetime is None:
                         raise ValueError("Database returned an invalid value "
                                          "in QuerySet.dates(). Are time zone "
