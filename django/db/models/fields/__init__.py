@@ -12,7 +12,7 @@ from itertools import tee
 from django.db import connection
 from django.db.models.loading import get_model
 from django.db.models.query_utils import QueryWrapper
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django import forms
 from django.core import exceptions, validators
 from django.utils.datastructures import DictWrapper
@@ -97,13 +97,14 @@ class Field(object):
         }
     description = property(_description)
 
+    @uses_settings({'DEFAULT_INDEX_TABLESPACE':'default_index_tablespace'})
     def __init__(self, verbose_name=None, name=None, primary_key=False,
             max_length=None, unique=False, blank=False, null=False,
             db_index=False, rel=None, default=NOT_PROVIDED, editable=True,
             serialize=True, unique_for_date=None, unique_for_month=None,
             unique_for_year=None, choices=None, help_text='', db_column=None,
             db_tablespace=None, auto_created=False, validators=[],
-            error_messages=None):
+            error_messages=None, default_index_tablespace=None):
         self.name = name
         self.verbose_name = verbose_name  # May be set by set_attributes_from_name
         self._verbose_name = verbose_name  # Store original for deconstruction
@@ -120,7 +121,7 @@ class Field(object):
         self._choices = choices or []
         self.help_text = help_text
         self.db_column = db_column
-        self.db_tablespace = db_tablespace or settings.DEFAULT_INDEX_TABLESPACE
+        self.db_tablespace = db_tablespace or default_index_tablespace
         self.auto_created = auto_created
 
         # Set db_index to True if the field has a relationship and doesn't
@@ -145,7 +146,8 @@ class Field(object):
         self._error_messages = error_messages  # Store for deconstruction later
         self.error_messages = messages
 
-    def deconstruct(self):
+    @uses_settings({'DEFAULT_INDEX_TABLESPACE':'default_index_tablespace'})
+    def deconstruct(self, default_index_tablespace=None):
         """
         Returns enough information to recreate the field as a 4-tuple:
 
@@ -191,7 +193,7 @@ class Field(object):
             "choices": [],
             "help_text": '',
             "db_column": None,
-            "db_tablespace": settings.DEFAULT_INDEX_TABLESPACE,
+            "db_tablespace": default_index_tablespace,
             "auto_created": False,
             "validators": [],
             "error_messages": None,
@@ -893,11 +895,12 @@ class DateField(Field):
     def get_internal_type(self):
         return "DateField"
 
-    def to_python(self, value):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def to_python(self, value, use_tz=None):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
-            if settings.USE_TZ and timezone.is_aware(value):
+            if use_tz and timezone.is_aware(value):
                 # Convert aware datetimes to the default time zone
                 # before casting them to dates (#17742).
                 default_timezone = timezone.get_default_timezone()
@@ -986,14 +989,15 @@ class DateTimeField(DateField):
     def get_internal_type(self):
         return "DateTimeField"
 
-    def to_python(self, value):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def to_python(self, value, use_tz=None):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
             return value
         if isinstance(value, datetime.date):
             value = datetime.datetime(value.year, value.month, value.day)
-            if settings.USE_TZ:
+            if use_tz:
                 # For backwards compatibility, interpret naive datetimes in
                 # local time. This won't work during DST change, but we can't
                 # do much about it, so we let the exceptions percolate up the
@@ -1046,10 +1050,11 @@ class DateTimeField(DateField):
 
     # get_prep_lookup is inherited from DateField
 
-    def get_prep_value(self, value):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def get_prep_value(self, value, use_tz=None):
         value = super(DateTimeField, self).get_prep_value(value)
         value = self.to_python(value)
-        if value is not None and settings.USE_TZ and timezone.is_naive(value):
+        if value is not None and use_tz and timezone.is_naive(value):
             # For backwards compatibility, interpret naive datetimes in local
             # time. This won't work during DST change, but we can't do much
             # about it, so we let the exceptions percolate up the call stack.
