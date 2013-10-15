@@ -6,7 +6,7 @@ import copy
 import itertools
 import sys
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core import exceptions
 from django.db import connections, router, transaction, DatabaseError, IntegrityError
 from django.db.models.constants import LOOKUP_SEP
@@ -648,7 +648,8 @@ class QuerySet(object):
         return self._clone(klass=DateQuerySet, setup=True,
                 _field_name=field_name, _kind=kind, _order=order)
 
-    def datetimes(self, field_name, kind, order='ASC', tzinfo=None):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def datetimes(self, field_name, kind, order='ASC', tzinfo=None, use_tz=None):
         """
         Returns a list of datetime objects representing all available
         datetimes for the given field_name, scoped to 'kind'.
@@ -657,7 +658,7 @@ class QuerySet(object):
                 "'kind' must be one of 'year', 'month', 'day', 'hour', 'minute' or 'second'."
         assert order in ('ASC', 'DESC'), \
                 "'order' must be either 'ASC' or 'DESC'."
-        if settings.USE_TZ:
+        if use_tz:
             if tzinfo is None:
                 tzinfo = timezone.get_current_timezone()
         else:
