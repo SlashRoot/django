@@ -5,7 +5,7 @@ This module provides a middleware that implements protection against a
 malicious site loading resources from your site in a hidden frame.
 """
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 
 class XFrameOptionsMiddleware(object):
     """
@@ -38,7 +38,8 @@ class XFrameOptionsMiddleware(object):
                                                                     response)
         return response
 
-    def get_xframe_options_value(self, request, response):
+    @uses_settings({'X_FRAME_OPTIONS':['x_frame_options', 'SAMEORIGIN']})
+    def get_xframe_options_value(self, request, response, x_frame_options='SAMEORIGIN'):
         """
         Gets the value to set for the X_FRAME_OPTIONS header.
 
@@ -48,4 +49,4 @@ class XFrameOptionsMiddleware(object):
         This method can be overridden if needed, allowing it to vary based on
         the request or response.
         """
-        return getattr(settings, 'X_FRAME_OPTIONS', 'SAMEORIGIN').upper()
+        return x_frame_options.upper()
