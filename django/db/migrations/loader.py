@@ -4,7 +4,7 @@ from django.utils.functional import cached_property
 from django.db.models.loading import cache
 from django.db.migrations.recorder import MigrationRecorder
 from django.db.migrations.graph import MigrationGraph
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 
 
 class MigrationLoader(object):
@@ -38,9 +38,10 @@ class MigrationLoader(object):
         self.applied_migrations = None
 
     @classmethod
-    def migrations_module(cls, app_label):
-        if app_label in settings.MIGRATION_MODULES:
-            return settings.MIGRATION_MODULES[app_label]
+    @uses_settings({'MIGRATION_MODULES':'migration_modules'})
+    def migrations_module(cls, app_label, migration_modules=None):
+        if app_label in migration_modules:
+            return migration_modules[app_label]
         app = cache.get_app(app_label)
         return ".".join(app.__name__.split(".")[:-1] + ["migrations"])
 
