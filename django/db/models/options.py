@@ -5,7 +5,7 @@ import re
 from bisect import bisect
 import warnings
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db.models.fields.related import ManyToManyRel
 from django.db.models.fields import AutoField, FieldDoesNotExist
 from django.db.models.fields.proxy import OrderWrt
@@ -27,7 +27,8 @@ DEFAULT_NAMES = ('verbose_name', 'verbose_name_plural', 'db_table', 'ordering',
 
 @python_2_unicode_compatible
 class Options(object):
-    def __init__(self, meta, app_label=None):
+    @uses_settings({'DEFAULT_TABLESPACE':'default_tablespace'})
+    def __init__(self, meta, app_label=None, default_tablespace=None):
         self.local_fields, self.local_many_to_many = [], []
         self.virtual_fields = []
         self.model_name, self.verbose_name = None, None
@@ -42,7 +43,7 @@ class Options(object):
         self.object_name, self.app_label = None, app_label
         self.get_latest_by = None
         self.order_with_respect_to = None
-        self.db_tablespace = settings.DEFAULT_TABLESPACE
+        self.db_tablespace = default_tablespace
         self.meta = meta
         self.pk = None
         self.has_auto_field, self.auto_field = False, None
@@ -75,13 +76,14 @@ class Options(object):
         # A custom AppCache to use, if you're making a separate model set.
         self.app_cache = cache
 
-    def contribute_to_class(self, cls, name):
+    @uses_settings({'INSTALLED_APPS':'installed_apps'})
+    def contribute_to_class(self, cls, name, installed_apps=None):
         from django.db import connection
         from django.db.backends.util import truncate_name
 
         cls._meta = self
         self.model = cls
-        self.installed = re.sub('\.models$', '', cls.__module__) in settings.INSTALLED_APPS
+        self.installed = re.sub('\.models$', '', cls.__module__) in installed_apps
         # First, construct the default values for these options.
         self.object_name = cls.__name__
         self.model_name = self.object_name.lower()
@@ -255,6 +257,10 @@ class Options(object):
         For historical reasons, model name lookups using get_model() are
         case insensitive, so we make sure we are case insensitive here.
         """
+
+        from django.conf import settings
+
+
         if self.swappable:
             model_label = '%s.%s' % (self.app_label, self.model_name)
             swapped_for = getattr(settings, self.swappable, None)
