@@ -6,7 +6,7 @@ import hashlib
 import logging
 from time import time
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.utils.encoding import force_bytes
 from django.utils.timezone import utc
 
@@ -96,8 +96,8 @@ def typecast_time(s): # does NOT store time zone information
         microseconds = '0'
     return datetime.time(int(hour), int(minutes), int(seconds), int(float('.' + microseconds) * 1000000))
 
-
-def typecast_timestamp(s): # does NOT store time zone information
+@uses_settings({'USE_TZ':'use_tz'})
+def typecast_timestamp(s, use_tz=None): # does NOT store time zone information
     # "2005-07-29 15:48:00.590358-05"
     # "2005-07-29 09:56:00-05"
     if not s:
@@ -122,7 +122,7 @@ def typecast_timestamp(s): # does NOT store time zone information
         seconds, microseconds = seconds.split('.')
     else:
         microseconds = '0'
-    tzinfo = utc if settings.USE_TZ else None
+    tzinfo = utc if use_tz else None
     return datetime.datetime(int(dates[0]), int(dates[1]), int(dates[2]),
         int(times[0]), int(times[1]), int(seconds),
         int((microseconds + '000000')[:6]), tzinfo)
