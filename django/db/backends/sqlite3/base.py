@@ -11,7 +11,7 @@ import decimal
 import warnings
 import re
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db import utils
 from django.db.backends import (util, BaseDatabaseFeatures,
     BaseDatabaseOperations, BaseDatabaseWrapper, BaseDatabaseValidation)
@@ -46,17 +46,19 @@ DatabaseError = Database.DatabaseError
 IntegrityError = Database.IntegrityError
 
 
-def parse_datetime_with_timezone_support(value):
+@uses_settings({'USE_TZ':'use_tz'})
+def parse_datetime_with_timezone_support(value, use_tz=None):
     dt = parse_datetime(value)
     # Confirm that dt is naive before overwriting its tzinfo.
-    if dt is not None and settings.USE_TZ and timezone.is_naive(dt):
+    if dt is not None and use_tz and timezone.is_naive(dt):
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
 
 
-def adapt_datetime_with_timezone_support(value):
+@uses_settings({'USE_TZ':'use_tz'})
+def adapt_datetime_with_timezone_support(value, use_tz=None):
     # Equivalent to DateTimeField.get_db_prep_value. Used only by raw SQL.
-    if settings.USE_TZ:
+    if use_tz:
         if timezone.is_naive(value):
             warnings.warn("SQLite received a naive datetime (%s)"
                           " while time zone support is active." % value,
@@ -183,9 +185,10 @@ class DatabaseOperations(BaseDatabaseOperations):
         # cause a collision with a field name).
         return "django_date_trunc('%s', %s)" % (lookup_type.lower(), field_name)
 
-    def datetime_extract_sql(self, lookup_type, field_name, tzname):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def datetime_extract_sql(self, lookup_type, field_name, tzname, use_tz=None):
         # Same comment as in date_extract_sql.
-        if settings.USE_TZ:
+        if use_tz:
             if pytz is None:
                 from django.core.exceptions import ImproperlyConfigured
                 raise ImproperlyConfigured("This query requires pytz, "
@@ -193,9 +196,10 @@ class DatabaseOperations(BaseDatabaseOperations):
         return "django_datetime_extract('%s', %s, %%s)" % (
             lookup_type.lower(), field_name), [tzname]
 
-    def datetime_trunc_sql(self, lookup_type, field_name, tzname):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def datetime_trunc_sql(self, lookup_type, field_name, tzname, use_tz=None):
         # Same comment as in date_trunc_sql.
-        if settings.USE_TZ:
+        if use_tz:
             if pytz is None:
                 from django.core.exceptions import ImproperlyConfigured
                 raise ImproperlyConfigured("This query requires pytz, "
@@ -249,16 +253,17 @@ class DatabaseOperations(BaseDatabaseOperations):
         # sql_flush() implementations). Just return SQL at this point
         return sql
 
-    def value_to_db_datetime(self, value):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def value_to_db_datetime(self, value, use_tz=None):
         if value is None:
             return None
 
         # SQLite doesn't support tz-aware datetimes
         if timezone.is_aware(value):
-            if settings.USE_TZ:
+            if use_tz:
                 value = value.astimezone(timezone.utc).replace(tzinfo=None)
             else:
-                raise ValueError("SQLite backend does not support timezone-aware datetimes when USE_TZ is False.")
+                raise ValueError("SQLite backend does not support timezone-aware datetimes when use_tz is False.")
 
         return six.text_type(value)
 
