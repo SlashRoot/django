@@ -2,7 +2,7 @@
 Query subclasses which provide extra functionality beyond simple data retrieval.
 """
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import FieldError
 from django.db import connections
 from django.db.models.constants import LOOKUP_SEP
@@ -240,10 +240,11 @@ class DateQuery(Query):
         if field.null:
             self.add_filter(("%s__isnull" % field_name, False))
 
-    def _check_field(self, field):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def _check_field(self, field, use_tz=None):
         assert isinstance(field, DateField), \
             "%r isn't a DateField." % field.name
-        if settings.USE_TZ:
+        if use_tz:
             assert not isinstance(field, DateTimeField), \
                 "%r is a DateTimeField, not a DateField." % field.name
 
