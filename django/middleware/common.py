@@ -3,7 +3,7 @@ import logging
 import re
 import warnings
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.mail import mail_managers
 from django.core import urlresolvers
 from django import http
@@ -36,7 +36,8 @@ class CommonMiddleware(object):
           appropriately.
     """
 
-    def process_request(self, request):
+    @uses_settings({'DISALLOWED_USER_AGENTS':'disallowed_user_agents', 'APPEND_SLASH':'append_slash', 'DEBUG':'debug', 'PREPEND_WWW':'prepend_www'})
+    def process_request(self, request, disallowed_user_agents=None, append_slash=None, debug=None, prepend_www=None):
         """
         Check for denied User-Agents and rewrite the URL based on
         settings.APPEND_SLASH and settings.PREPEND_WWW
@@ -44,7 +45,7 @@ class CommonMiddleware(object):
 
         # Check for denied User-Agents
         if 'HTTP_USER_AGENT' in request.META:
-            for user_agent_regex in settings.DISALLOWED_USER_AGENTS:
+            for user_agent_regex in disallowed_user_agents:
                 if user_agent_regex.search(request.META['HTTP_USER_AGENT']):
                     logger.warning('Forbidden (User agent): %s', request.path,
                         extra={
@@ -60,18 +61,18 @@ class CommonMiddleware(object):
         old_url = [host, request.path]
         new_url = old_url[:]
 
-        if (settings.PREPEND_WWW and old_url[0] and
+        if (prepend_www and old_url[0] and
                 not old_url[0].startswith('www.')):
             new_url[0] = 'www.' + old_url[0]
 
         # Append a slash if APPEND_SLASH is set and the URL doesn't have a
         # trailing slash and there is no pattern for the current path
-        if settings.APPEND_SLASH and (not old_url[1].endswith('/')):
+        if append_slash and (not old_url[1].endswith('/')):
             urlconf = getattr(request, 'urlconf', None)
             if (not urlresolvers.is_valid_path(request.path_info, urlconf) and
                     urlresolvers.is_valid_path("%s/" % request.path_info, urlconf)):
                 new_url[1] = new_url[1] + '/'
-                if settings.DEBUG and request.method == 'POST':
+                if debug and request.method == 'POST':
                     raise RuntimeError((""
                     "You called this URL via POST, but the URL doesn't end "
                     "in a slash and you have APPEND_SLASH set. Django can't "
@@ -103,17 +104,18 @@ class CommonMiddleware(object):
                     pass
         return http.HttpResponsePermanentRedirect(newurl)
 
-    def process_response(self, request, response):
+    @uses_settings({'SEND_BROKEN_LINK_EMAILS':'send_broken_link_emails', 'USE_ETAGS':'use_etags'})
+    def process_response(self, request, response, send_broken_link_emails=None, use_etags=None):
         """
         Calculate the ETag, if needed.
         """
-        if settings.SEND_BROKEN_LINK_EMAILS:
+        if send_broken_link_emails:
             warnings.warn("SEND_BROKEN_LINK_EMAILS is deprecated. "
                 "Use BrokenLinkEmailsMiddleware instead.",
                 DeprecationWarning, stacklevel=2)
             BrokenLinkEmailsMiddleware().process_response(request, response)
 
-        if settings.USE_ETAGS:
+        if use_etags:
             if response.has_header('ETag'):
                 etag = response['ETag']
             elif response.streaming:
@@ -134,11 +136,12 @@ class CommonMiddleware(object):
 
 class BrokenLinkEmailsMiddleware(object):
 
-    def process_response(self, request, response):
+    @uses_settings({'DEBUG':'debug'})
+    def process_response(self, request, response, debug=None):
         """
         Send broken link emails for relevant 404 NOT FOUND responses.
         """
-        if response.status_code == 404 and not settings.DEBUG:
+        if response.status_code == 404 and not debug:
             domain = request.get_host()
             path = request.get_full_path()
             referer = force_text(request.META.get('HTTP_REFERER', ''), errors='replace')
@@ -163,7 +166,8 @@ class BrokenLinkEmailsMiddleware(object):
         # Different subdomains are treated as different domains.
         return bool(re.match("^https?://%s/" % re.escape(domain), referer))
 
-    def is_ignorable_request(self, request, uri, domain, referer):
+    @uses_settings({'IGNORABLE_404_URLS':'ignorable_404_urls'})
+    def is_ignorable_request(self, request, uri, domain, referer, ignorable_404_urls=None):
         """
         Returns True if the given request *shouldn't* notify the site managers.
         """
@@ -171,4 +175,4 @@ class BrokenLinkEmailsMiddleware(object):
         if (not referer or
                 (not self.is_internal_request(domain, referer) and '?' in referer)):
             return True
-        return any(pattern.search(uri) for pattern in settings.IGNORABLE_404_URLS)
+        return any(pattern.search(uri) for pattern in ignorable_404_urls)
