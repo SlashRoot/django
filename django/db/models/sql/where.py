@@ -6,7 +6,7 @@ import collections
 import datetime
 from itertools import repeat
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db.models.fields import DateTimeField, Field
 from django.db.models.sql.datastructures import EmptyResultSet, Empty
 from django.db.models.sql.aggregates import Aggregate
@@ -164,7 +164,8 @@ class WhereNode(tree.Node):
                     cols.extend(child[3].get_cols())
         return cols
 
-    def make_atom(self, child, qn, connection):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def make_atom(self, child, qn, connection, use_tz=None):
         """
         Turn a tuple (Constraint(table_alias, column_name, db_type),
         lookup_type, value_annotation, params) into valid SQL.
@@ -244,7 +245,7 @@ class WhereNode(tree.Node):
             return ('%s BETWEEN %%s and %%s' % field_sql, params)
         elif is_datetime_field and lookup_type in ('month', 'day', 'week_day',
                                                    'hour', 'minute', 'second'):
-            tzname = timezone.get_current_timezone_name() if settings.USE_TZ else None
+            tzname = timezone.get_current_timezone_name() if use_tz else None
             sql, tz_params = connection.ops.datetime_extract_sql(lookup_type, field_sql, tzname)
             return ('%s = %%s' % sql, tz_params + params)
         elif lookup_type in ('month', 'day', 'week_day'):
