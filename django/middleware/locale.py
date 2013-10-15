@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.urlresolvers import (is_valid_path, get_resolver,
                                       LocaleRegexURLResolver)
 from django.http import HttpResponseRedirect
@@ -19,8 +19,9 @@ class LocaleMiddleware(object):
     is available, of course).
     """
 
-    def __init__(self):
-        self._supported_languages = OrderedDict(settings.LANGUAGES)
+    @uses_settings({'LANGUAGES':'languages'})
+    def __init__(self, languages=None):
+        self._supported_languages = OrderedDict(languages)
         self._is_language_prefix_patterns_used = False
         for url_pattern in get_resolver(None).url_patterns:
             if isinstance(url_pattern, LocaleRegexURLResolver):
@@ -34,7 +35,8 @@ class LocaleMiddleware(object):
         translation.activate(language)
         request.LANGUAGE_CODE = translation.get_language()
 
-    def process_response(self, request, response):
+    @uses_settings({'APPEND_SLASH':'append_slash'})
+    def process_response(self, request, response, append_slash=None):
         language = translation.get_language()
         language_from_path = translation.get_language_from_path(
                 request.path_info, supported=self._supported_languages
@@ -44,7 +46,7 @@ class LocaleMiddleware(object):
             urlconf = getattr(request, 'urlconf', None)
             language_path = '/%s%s' % (language, request.path_info)
             path_valid = is_valid_path(language_path, urlconf)
-            if (not path_valid and settings.APPEND_SLASH
+            if (not path_valid and append_slash
                     and not language_path.endswith('/')):
                 path_valid = is_valid_path("%s/" % language_path, urlconf)
 
