@@ -27,7 +27,7 @@
 
 from django.core.exceptions import ImproperlyConfigured
 from django.template.base import Origin, Template, Context, TemplateDoesNotExist, add_to_builtins
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.utils.module_loading import import_by_path
 from django.utils import six
 
@@ -79,8 +79,9 @@ class LoaderOrigin(Origin):
     def reload(self):
         return self.loader(self.loadname, self.dirs)[0]
 
-def make_origin(display_name, loader, name, dirs):
-    if settings.TEMPLATE_DEBUG and display_name:
+@uses_settings({'TEMPLATE_DEBUG':'template_debug'})
+def make_origin(display_name, loader, name, dirs, template_debug=False):
+    if template_debug and display_name:
         return LoaderOrigin(display_name, loader, name, dirs)
     else:
         return None
@@ -110,14 +111,15 @@ def find_template_loader(loader):
     else:
         raise ImproperlyConfigured('Loader does not define a "load_template" callable template source loader')
 
-def find_template(name, dirs=None):
+@uses_settings({'TEMPLATE_LOADERS':'template_loaders'})
+def find_template(name, dirs=None, template_loaders=None):
     # Calculate template_source_loaders the first time the function is executed
     # because putting this logic in the module-level namespace may cause
     # circular import errors. See Django ticket #1292.
     global template_source_loaders
     if template_source_loaders is None:
         loaders = []
-        for loader_name in settings.TEMPLATE_LOADERS:
+        for loader_name in template_loaders:
             loader = find_template_loader(loader_name)
             if loader is not None:
                 loaders.append(loader)
