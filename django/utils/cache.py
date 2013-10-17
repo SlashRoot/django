@@ -22,7 +22,7 @@ import hashlib
 import re
 import time
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.cache import get_cache
 from django.utils.encoding import iri_to_uri, force_bytes, force_text
 from django.utils.http import http_date
@@ -99,7 +99,8 @@ def _set_response_etag(response):
         response['ETag'] = '"%s"' % hashlib.md5(response.content).hexdigest()
     return response
 
-def patch_response_headers(response, cache_timeout=None):
+@uses_settings({'CACHE_MIDDLEWARE_SECONDS':'cache_middleware_seconds', 'USE_ETAGS':'use_etags'})
+def patch_response_headers(response, cache_timeout=None, cache_middleware_seconds=600, use_etags=False):
     """
     Adds some useful headers to the given HttpResponse object:
         ETag, Last-Modified, Expires and Cache-Control
@@ -110,10 +111,10 @@ def patch_response_headers(response, cache_timeout=None):
     by default.
     """
     if cache_timeout is None:
-        cache_timeout = settings.CACHE_MIDDLEWARE_SECONDS
+        cache_timeout = cache_middleware_seconds
     if cache_timeout < 0:
         cache_timeout = 0 # Can't have max-age negative
-    if settings.USE_ETAGS and not response.has_header('ETag'):
+    if use_etags and not response.has_header('ETag'):
         if hasattr(response, 'render') and callable(response.render):
             response.add_post_render_callback(_set_response_etag)
         else:
@@ -159,14 +160,15 @@ def has_vary_header(response, header_query):
     existing_headers = set(header.lower() for header in vary_headers)
     return header_query.lower() in existing_headers
 
-def _i18n_cache_key_suffix(request, cache_key):
+@uses_settings({'USE_I18N':'use_i18n', 'USE_L10N':'use_l10n', 'USE_TZ':'use_tz'})
+def _i18n_cache_key_suffix(request, cache_key, use_i18n=True, use_l10n=False, use_tz=None):
     """If necessary, adds the current locale or time zone to the cache key."""
-    if settings.USE_I18N or settings.USE_L10N:
+    if use_i18n or use_l10n:
         # first check if LocaleMiddleware or another middleware added
         # LANGUAGE_CODE to request, then fall back to the active language
         # which in turn can also fall back to settings.LANGUAGE_CODE
         cache_key += '.%s' % getattr(request, 'LANGUAGE_CODE', get_language())
-    if settings.USE_TZ:
+    if use_tz:
         # The datetime module doesn't restrict the output of tzname().
         # Windows is known to use non-standard, locale-dependant names.
         # User-defined tzinfo classes may return absolutely anything.
@@ -194,7 +196,8 @@ def _generate_cache_header_key(key_prefix, request):
         key_prefix, path.hexdigest())
     return _i18n_cache_key_suffix(request, cache_key)
 
-def get_cache_key(request, key_prefix=None, method='GET', cache=None):
+@uses_settings({'CACHE_MIDDLEWARE_KEY_PREFIX':'cache_middleware_key_prefix', 'CACHE_MIDDLEWARE_ALIAS':'cache_middleware_alias'})
+def get_cache_key(request, key_prefix=None, method='GET', cache=None, cache_middleware_key_prefix='', cache_middleware_alias='default'):
     """
     Returns a cache key based on the request path and query. It can be used
     in the request phase because it pulls the list of headers to take into
@@ -205,17 +208,18 @@ def get_cache_key(request, key_prefix=None, method='GET', cache=None):
     function returns None.
     """
     if key_prefix is None:
-        key_prefix = settings.CACHE_MIDDLEWARE_KEY_PREFIX
+        key_prefix = cache_middleware_key_prefix
     cache_key = _generate_cache_header_key(key_prefix, request)
     if cache is None:
-        cache = get_cache(settings.CACHE_MIDDLEWARE_ALIAS)
+        cache = get_cache(cache_middleware_alias)
     headerlist = cache.get(cache_key, None)
     if headerlist is not None:
         return _generate_cache_key(request, method, headerlist, key_prefix)
     else:
         return None
 
-def learn_cache_key(request, response, cache_timeout=None, key_prefix=None, cache=None):
+@uses_settings({'CACHE_MIDDLEWARE_KEY_PREFIX':'cache_middleware_key_prefix', 'CACHE_MIDDLEWARE_SECONDS':'cache_middleware_seconds', 'CACHE_MIDDLEWARE_ALIAS':'cache_middleware_alias', 'USE_I18N':'use_i18n', 'USE_L10N':'use_l10n'})
+def learn_cache_key(request, response, cache_timeout=None, key_prefix=None, cache=None, cache_middleware_key_prefix='', cache_middleware_seconds=600, cache_middleware_alias='default', use_i18n=True, use_l10n=False):
     """
     Learns what headers to take into account for some request path from the
     response object. It stores those headers in a global path registry so that
@@ -229,14 +233,14 @@ def learn_cache_key(request, response, cache_timeout=None, key_prefix=None, cach
     the Vary header and so at the list of headers to use for the cache key.
     """
     if key_prefix is None:
-        key_prefix = settings.CACHE_MIDDLEWARE_KEY_PREFIX
+        key_prefix = cache_middleware_key_prefix
     if cache_timeout is None:
-        cache_timeout = settings.CACHE_MIDDLEWARE_SECONDS
+        cache_timeout = cache_middleware_seconds
     cache_key = _generate_cache_header_key(key_prefix, request)
     if cache is None:
-        cache = get_cache(settings.CACHE_MIDDLEWARE_ALIAS)
+        cache = get_cache(cache_middleware_alias)
     if response.has_header('Vary'):
-        is_accept_language_redundant = settings.USE_I18N or settings.USE_L10N
+        is_accept_language_redundant = use_i18n or use_l10n
         # If i18n or l10n are used, the generated cache key will be suffixed
         # with the current locale. Adding the raw value of Accept-Language is
         # redundant in that case and would result in storing the same content
