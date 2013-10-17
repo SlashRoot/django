@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import datetime
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db import models
 from django.core.exceptions import ImproperlyConfigured
 from django.http import Http404
@@ -289,7 +289,8 @@ class DateMixin(object):
         field = model._meta.get_field(self.get_date_field())
         return isinstance(field, models.DateTimeField)
 
-    def _make_date_lookup_arg(self, value):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def _make_date_lookup_arg(self, value, use_tz=None):
         """
         Convert a date into a datetime when the date field is a DateTimeField.
 
@@ -298,7 +299,7 @@ class DateMixin(object):
         """
         if self.uses_datetime_field:
             value = datetime.datetime.combine(value, datetime.time.min)
-            if settings.USE_TZ:
+            if use_tz:
                 value = timezone.make_aware(value, timezone.get_current_timezone())
         return value
 
@@ -684,7 +685,8 @@ def _date_from_string(year, year_format, month='', month_format='', day='', day_
         })
 
 
-def _get_next_prev(generic_view, date, is_previous, period):
+@uses_settings({'USE_TZ':'use_tz'})
+def _get_next_prev(generic_view, date, is_previous, period, use_tz=None):
     """
     Helper: Get the next or the previous valid date. The idea is to allow
     links on month/day views to never be 404s by never providing a date
@@ -767,7 +769,7 @@ def _get_next_prev(generic_view, date, is_previous, period):
 
         # Convert datetimes to dates in the current time zone.
         if generic_view.uses_datetime_field:
-            if settings.USE_TZ:
+            if use_tz:
                 result = timezone.localtime(result)
             result = result.date()
 
@@ -775,11 +777,12 @@ def _get_next_prev(generic_view, date, is_previous, period):
         return get_current(result)
 
 
-def timezone_today():
+@uses_settings({'USE_TZ':'use_tz'})
+def timezone_today(use_tz=None):
     """
     Return the current date in the current time zone.
     """
-    if settings.USE_TZ:
+    if use_tz:
         return timezone.localtime(timezone.now()).date()
     else:
         return datetime.date.today()
