@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.template.base import TemplateSyntaxError, Library, Node, TextNode,\
     token_kwargs, Variable
 from django.template.loader import get_template
@@ -128,7 +128,8 @@ class IncludeNode(Node):
         self.isolated_context = kwargs.pop('isolated_context', False)
         super(IncludeNode, self).__init__(*args, **kwargs)
 
-    def render(self, context):
+    @uses_settings({'TEMPLATE_DEBUG':'template_debug'})
+    def render(self, context, template_debug=False):
         try:
             template = self.template.resolve(context)
             # Does this quack like a Template?
@@ -144,7 +145,7 @@ class IncludeNode(Node):
             with context.push(**values):
                 return template.render(context)
         except:
-            if settings.TEMPLATE_DEBUG:
+            if template_debug:
                 raise
             return ''
 
