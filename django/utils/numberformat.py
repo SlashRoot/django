@@ -1,10 +1,11 @@
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.utils.safestring import mark_safe
 from django.utils import six
 
 
+@uses_settings({'USE_L10N':'use_l10n', 'USE_THOUSAND_SEPARATOR':'use_thousand_separator'})
 def format(number, decimal_sep, decimal_pos=None, grouping=0, thousand_sep='',
-           force_grouping=False):
+           force_grouping=False, use_l10n=None, use_thousand_separator=None):
     """
     Gets a number (as a number or string), and returns it as a string,
     using formats defined as arguments:
@@ -14,7 +15,7 @@ def format(number, decimal_sep, decimal_pos=None, grouping=0, thousand_sep='',
     * grouping: Number of digits in every group limited by thousand separator
     * thousand_sep: Thousand separator symbol (for example ",")
     """
-    use_grouping = settings.USE_L10N and settings.USE_THOUSAND_SEPARATOR
+    use_grouping = use_l10n and use_thousand_separator
     use_grouping = use_grouping or force_grouping
     use_grouping = use_grouping and grouping > 0
     # Make the common case fast
