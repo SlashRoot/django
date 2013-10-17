@@ -4,7 +4,7 @@ import os
 import gettext as gettext_module
 
 from django import http
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.template import Context, Template
 from django.utils.translation import check_for_language, to_locale, get_language
 from django.utils.encoding import smart_text
@@ -13,7 +13,8 @@ from django.utils._os import upath
 from django.utils.http import is_safe_url
 from django.utils import six
 
-def set_language(request):
+@uses_settings({'LANGUAGE_COOKIE_NAME':'language_cookie_name'})
+def set_language(request, language_cookie_name=None):
     """
     Redirect to a given url while setting the chosen language in the
     session or cookie. The url and the language code need to be
@@ -36,7 +37,7 @@ def set_language(request):
             if hasattr(request, 'session'):
                 request.session['django_language'] = lang_code
             else:
-                response.set_cookie(settings.LANGUAGE_COOKIE_NAME, lang_code)
+                response.set_cookie(language_cookie_name, lang_code)
     return response
 
 
@@ -44,6 +45,7 @@ def get_formats():
     """
     Returns all formats strings required for i18n to work
     """
+    from django.conf import settings
     FORMAT_SETTINGS = (
         'DATE_FORMAT', 'DATETIME_FORMAT', 'TIME_FORMAT',
         'YEAR_MONTH_FORMAT', 'MONTH_DAY_FORMAT', 'SHORT_DATE_FORMAT',
@@ -184,9 +186,10 @@ def render_javascript_catalog(catalog=None, plural=None):
     return http.HttpResponse(template.render(context), 'text/javascript')
 
 
-def get_javascript_catalog(locale, domain, packages):
-    default_locale = to_locale(settings.LANGUAGE_CODE)
-    packages = [p for p in packages if p == 'django.conf' or p in settings.INSTALLED_APPS]
+@uses_settings({'LANGUAGE_CODE':'language_code', 'INSTALLED_APPS':'installed_apps', 'LOCALE_PATHS':'locale_paths'})
+def get_javascript_catalog(locale, domain, packages, language_code=None, installed_apps=None, locale_paths=None):
+    default_locale = to_locale(language_code)
+    packages = [p for p in packages if p == 'django.conf' or p in installed_apps]
     t = {}
     paths = []
     en_selected = locale.startswith('en')
@@ -197,7 +200,7 @@ def get_javascript_catalog(locale, domain, packages):
         path = os.path.join(os.path.dirname(upath(p.__file__)), 'locale')
         paths.append(path)
     # add the filesystem paths listed in the LOCALE_PATHS setting
-    paths.extend(list(reversed(settings.LOCALE_PATHS)))
+    paths.extend(list(reversed(locale_paths)))
     # first load all english languages files for defaults
     for path in paths:
         try:
