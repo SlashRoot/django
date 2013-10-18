@@ -3,7 +3,7 @@ import errno
 import itertools
 from datetime import datetime
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.files import locks, File
 from django.core.files.move import file_move_safe
@@ -147,19 +147,21 @@ class FileSystemStorage(Storage):
     Standard filesystem storage
     """
 
-    def __init__(self, location=None, base_url=None):
+    @uses_settings({'MEDIA_ROOT':'media_root', 'MEDIA_URL':'media_url'})
+    def __init__(self, location=None, base_url=None, media_root='', media_url=''):
         if location is None:
-            location = settings.MEDIA_ROOT
+            location = media_root
         self.base_location = location
         self.location = abspathu(self.base_location)
         if base_url is None:
-            base_url = settings.MEDIA_URL
+            base_url = media_url
         self.base_url = base_url
 
     def _open(self, name, mode='rb'):
         return File(open(self.path(name), mode))
 
-    def _save(self, name, content):
+    @uses_settings({'FILE_UPLOAD_DIRECTORY_PERMISSIONS':'file_upload_directory_permissions', 'FILE_UPLOAD_PERMISSIONS':'file_upload_permissions'})
+    def _save(self, name, content, file_upload_directory_permissions=None, file_upload_permissions=None):
         full_path = self.path(name)
 
         # Create any intermediate directories that do not exist.
@@ -169,12 +171,12 @@ class FileSystemStorage(Storage):
         directory = os.path.dirname(full_path)
         if not os.path.exists(directory):
             try:
-                if settings.FILE_UPLOAD_DIRECTORY_PERMISSIONS is not None:
+                if file_upload_directory_permissions is not None:
                     # os.makedirs applies the global umask, so we reset it,
                     # for consistency with FILE_UPLOAD_PERMISSIONS behavior.
                     old_umask = os.umask(0)
                     try:
-                        os.makedirs(directory, settings.FILE_UPLOAD_DIRECTORY_PERMISSIONS)
+                        os.makedirs(directory, file_upload_directory_permissions)
                     finally:
                         os.umask(old_umask)
                 else:
@@ -232,8 +234,8 @@ class FileSystemStorage(Storage):
                 # OK, the file save worked. Break out of the loop.
                 break
 
-        if settings.FILE_UPLOAD_PERMISSIONS is not None:
-            os.chmod(full_path, settings.FILE_UPLOAD_PERMISSIONS)
+        if file_upload_permissions is not None:
+            os.chmod(full_path, file_upload_permissions)
 
         return name
 
@@ -288,8 +290,9 @@ class FileSystemStorage(Storage):
     def modified_time(self, name):
         return datetime.fromtimestamp(os.path.getmtime(self.path(name)))
 
-def get_storage_class(import_path=None):
-    return import_by_path(import_path or settings.DEFAULT_FILE_STORAGE)
+@uses_settings({'DEFAULT_FILE_STORAGE':'default_file_storage'})
+def get_storage_class(import_path=None, default_file_storage='django.core.files.storage.FileSystemStorage'):
+    return import_by_path(import_path or default_file_storage)
 
 class DefaultStorage(LazyObject):
     def _setup(self):
