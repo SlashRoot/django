@@ -8,7 +8,7 @@ RequestContext.
 """
 from __future__ import unicode_literals
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.middleware.csrf import get_token
 from django.utils import six
 from django.utils.encoding import smart_text
@@ -33,20 +33,22 @@ def csrf(request):
 
     return {'csrf_token': _get_val() }
 
-def debug(request):
+@uses_settings({'DEBUG':'debug', 'INTERNAL_IPS':'internal_ips'})
+def debug(request, debug=False, internal_ips=()):
     "Returns context variables helpful for debugging."
     context_extras = {}
-    if settings.DEBUG and request.META.get('REMOTE_ADDR') in settings.INTERNAL_IPS:
+    if debug and request.META.get('REMOTE_ADDR') in internal_ips:
         context_extras['debug'] = True
         from django.db import connection
         context_extras['sql_queries'] = connection.queries
     return context_extras
 
-def i18n(request):
+@uses_settings({'LANGUAGES':'languages'})
+def i18n(request, languages=()):
     from django.utils import translation
 
     context_extras = {}
-    context_extras['LANGUAGES'] = settings.LANGUAGES
+    context_extras['LANGUAGES'] = languages
     context_extras['LANGUAGE_CODE'] = translation.get_language()
     context_extras['LANGUAGE_BIDI'] = translation.get_language_bidi()
 
@@ -57,19 +59,21 @@ def tz(request):
 
     return {'TIME_ZONE': timezone.get_current_timezone_name()}
 
-def static(request):
+@uses_settings({'STATIC_URL':'static_url'})
+def static(request, static_url=None):
     """
     Adds static-related context variables to the context.
 
     """
-    return {'STATIC_URL': settings.STATIC_URL}
+    return {'STATIC_URL': static_url}
 
-def media(request):
+@uses_settings({'MEDIA_URL':'media_url'})
+def media(request, media_url=''):
     """
     Adds media-related context variables to the context.
 
     """
-    return {'MEDIA_URL': settings.MEDIA_URL}
+    return {'MEDIA_URL': media_url}
 
 def request(request):
     return {'request': request}
