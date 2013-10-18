@@ -3,7 +3,7 @@ import smtplib
 import ssl
 import threading
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.utils import DNS_NAME
 from django.core.mail.message import sanitize_address
@@ -14,15 +14,16 @@ class EmailBackend(BaseEmailBackend):
     """
     A wrapper that manages the SMTP network connection.
     """
+    @uses_settings({'EMAIL_HOST':'email_host', 'EMAIL_PORT':'email_port', 'EMAIL_HOST_USER':'email_host_user', 'EMAIL_HOST_PASSWORD':'email_host_password', 'EMAIL_USE_TLS':'email_use_tls', 'EMAIL_USE_SSL':'email_use_ssl'})
     def __init__(self, host=None, port=None, username=None, password=None,
-                 use_tls=None, fail_silently=False, use_ssl=None, **kwargs):
+                 use_tls=None, fail_silently=False, use_ssl=None, email_host='localhost', email_port=25, email_host_user='', email_host_password='', email_use_tls=False, email_use_ssl=False, **kwargs):
         super(EmailBackend, self).__init__(fail_silently=fail_silently)
-        self.host = host or settings.EMAIL_HOST
-        self.port = port or settings.EMAIL_PORT
-        self.username = settings.EMAIL_HOST_USER if username is None else username
-        self.password = settings.EMAIL_HOST_PASSWORD if password is None else password
-        self.use_tls = settings.EMAIL_USE_TLS if use_tls is None else use_tls
-        self.use_ssl = settings.EMAIL_USE_SSL if use_ssl is None else use_ssl
+        self.host = host or email_host
+        self.port = port or email_port
+        self.username = email_host_user if username is None else username
+        self.password = email_host_password if password is None else password
+        self.use_tls = email_use_tls if use_tls is None else use_tls
+        self.use_ssl = email_use_ssl if use_ssl is None else use_ssl
         if self.use_ssl and self.use_tls:
             raise ValueError(
                 "EMAIL_USE_TLS/EMAIL_USE_SSL are mutually exclusive, so only set "
