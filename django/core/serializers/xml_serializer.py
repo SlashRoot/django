@@ -4,7 +4,7 @@ XML serializer.
 
 from __future__ import unicode_literals
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.serializers import base
 from django.db import models, DEFAULT_DB_ALIAS
 from django.utils.xmlutils import SimplerXMLGenerator
@@ -22,11 +22,12 @@ class Serializer(base.Serializer):
         if self.options.get('indent', None) is not None:
             self.xml.ignorableWhitespace('\n' + ' ' * self.options.get('indent', None) * level)
 
-    def start_serialization(self):
+    @uses_settings({'DEFAULT_CHARSET':'default_charset'})
+    def start_serialization(self, default_charset='utf-8'):
         """
         Start serialization -- open the XML document and the root element.
         """
-        self.xml = SimplerXMLGenerator(self.stream, self.options.get("encoding", settings.DEFAULT_CHARSET))
+        self.xml = SimplerXMLGenerator(self.stream, self.options.get("encoding", default_charset))
         self.xml.startDocument()
         self.xml.startElement("django-objects", {"version" : "1.0"})
 
