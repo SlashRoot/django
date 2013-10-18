@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 
 from io import BytesIO
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.files.uploadedfile import TemporaryUploadedFile, InMemoryUploadedFile
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.module_loading import import_by_path
@@ -149,13 +149,14 @@ class MemoryFileUploadHandler(FileUploadHandler):
     File upload handler to stream uploads into memory (used for small files).
     """
 
-    def handle_raw_input(self, input_data, META, content_length, boundary, encoding=None):
+    @uses_settings({'FILE_UPLOAD_MAX_MEMORY_SIZE':'file_upload_max_memory_size'})
+    def handle_raw_input(self, input_data, META, content_length, boundary, encoding=None, file_upload_max_memory_size=2621440):
         """
         Use the content_length to signal whether or not this handler should be in use.
         """
         # Check the content-length header to see if we should
         # If the post is too large, we cannot use the Memory handler.
-        if content_length > settings.FILE_UPLOAD_MAX_MEMORY_SIZE:
+        if content_length > file_upload_max_memory_size:
             self.activated = False
         else:
             self.activated = True
