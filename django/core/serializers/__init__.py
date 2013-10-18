@@ -18,7 +18,7 @@ To add your own serializers, use the SERIALIZATION_MODULES setting::
 
 import importlib
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.utils import six
 from django.core.serializers.base import SerializerDoesNotExist
 
@@ -133,7 +133,8 @@ def deserialize(format, stream_or_string, **options):
     d = get_deserializer(format)
     return d(stream_or_string, **options)
 
-def _load_serializers():
+@uses_settings({'SERIALIZATION_MODULES':'serialization_modules'})
+def _load_serializers(serialization_modules=None):
     """
     Register built-in and settings-defined serializers. This is done lazily so
     that user code has a chance to (e.g.) set up custom settings without
@@ -143,7 +144,7 @@ def _load_serializers():
     serializers = {}
     for format in BUILTIN_SERIALIZERS:
         register_serializer(format, BUILTIN_SERIALIZERS[format], serializers)
-    if hasattr(settings, "SERIALIZATION_MODULES"):
-        for format in settings.SERIALIZATION_MODULES:
-            register_serializer(format, settings.SERIALIZATION_MODULES[format], serializers)
+    if serialization_modules:
+        for format in serialization_modules:
+            register_serializer(format, serialization_modules[format], serializers)
     _serializers = serializers
