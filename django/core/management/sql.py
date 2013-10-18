@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.management.base import CommandError
 from django.db import models
 from django.db.models import get_models
@@ -166,7 +166,8 @@ def _split_statements(content):
     return statements
 
 
-def custom_sql_for_model(model, style, connection):
+@uses_settings({'FILE_CHARSET':'file_charset'})
+def custom_sql_for_model(model, style, connection, file_charset='utf-8'):
     opts = model._meta
     app_dirs = []
     app_dir = models.get_app_path(model._meta.app_label)
@@ -198,7 +199,7 @@ def custom_sql_for_model(model, style, connection):
         sql_files.append(os.path.join(app_dir, "%s.sql" % opts.model_name))
     for sql_file in sql_files:
         if os.path.exists(sql_file):
-            with codecs.open(sql_file, 'U', encoding=settings.FILE_CHARSET) as fp:
+            with codecs.open(sql_file, 'U', encoding=file_charset) as fp:
                 # Some backends can't execute more than one SQL statement at a time,
                 # so split into separate statements.
                 output.extend(_split_statements(fp.read()))
