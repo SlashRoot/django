@@ -45,7 +45,7 @@ More details about how the caching works:
 
 import warnings
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.cache import get_cache, DEFAULT_CACHE_ALIAS
 from django.utils.cache import get_cache_key, learn_cache_key, patch_response_headers, get_max_age
 
@@ -59,11 +59,12 @@ class UpdateCacheMiddleware(object):
     UpdateCacheMiddleware must be the first piece of middleware in
     MIDDLEWARE_CLASSES so that it'll get called last during the response phase.
     """
-    def __init__(self):
-        self.cache_timeout = settings.CACHE_MIDDLEWARE_SECONDS
-        self.key_prefix = settings.CACHE_MIDDLEWARE_KEY_PREFIX
-        self.cache_anonymous_only = getattr(settings, 'CACHE_MIDDLEWARE_ANONYMOUS_ONLY', False)
-        self.cache_alias = settings.CACHE_MIDDLEWARE_ALIAS
+    @uses_settings({'CACHE_MIDDLEWARE_SECONDS':'cache_middleware_seconds', 'CACHE_MIDDLEWARE_KEY_PREFIX':'cache_middleware_key_prefix', 'CACHE_MIDDLEWARE_ANONYMOUS_ONLY':['cache_middleware_anonymous_only', False], 'CACHE_MIDDLEWARE_ALIAS':'cache_middleware_alias'})
+    def __init__(self, cache_middleware_seconds='600', cache_middleware_key_prefix='', cache_middleware_anonymous_only=None, cache_middleware_alias='default'):
+        self.cache_timeout = cache_middleware_seconds
+        self.key_prefix = cache_middleware_key_prefix
+        self.cache_anonymous_only = cache_middleware_anonymous_only
+        self.cache_alias = cache_middleware_alias
         self.cache = get_cache(self.cache_alias)
 
     def _session_accessed(self, request):
@@ -120,10 +121,11 @@ class FetchFromCacheMiddleware(object):
     FetchFromCacheMiddleware must be the last piece of middleware in
     MIDDLEWARE_CLASSES so that it'll get called last during the request phase.
     """
-    def __init__(self):
-        self.cache_timeout = settings.CACHE_MIDDLEWARE_SECONDS
-        self.key_prefix = settings.CACHE_MIDDLEWARE_KEY_PREFIX
-        self.cache_alias = settings.CACHE_MIDDLEWARE_ALIAS
+    @uses_settings({'CACHE_MIDDLEWARE_SECONDS':'cache_middleware_seconds', 'CACHE_MIDDLEWARE_KEY_PREFIX':'cache_middleware_key_prefix', 'CACHE_MIDDLEWARE_ALIAS':'cache_middleware_alias'})
+    def __init__(self, cache_middleware_seconds=600, cache_middleware_key_prefix='', cache_middleware_alias='default'):
+        self.cache_timeout = cache_middleware_seconds
+        self.key_prefix = cache_middleware_key_prefix
+        self.cache_alias = cache_middleware_alias
         self.cache = get_cache(self.cache_alias)
 
     def process_request(self, request):
@@ -161,7 +163,8 @@ class CacheMiddleware(UpdateCacheMiddleware, FetchFromCacheMiddleware):
     Also used as the hook point for the cache decorator, which is generated
     using the decorator-from-middleware utility.
     """
-    def __init__(self, cache_timeout=None, cache_anonymous_only=None, **kwargs):
+    @uses_settings({'CACHE_MIDDLEWARE_KEY_PREFIX':'cache_middleware_key_prefix', 'CACHE_MIDDLEWARE_SECONDS':'cache_middleware_seconds', 'CACHE_MIDDLEWARE_ALIAS':'cache_middleware_alias', 'CACHE_MIDDLEWARE_ANONYMOUS_ONLY':['cache_middleware_anonymous_only', False]})
+    def __init__(self, cache_timeout=None, cache_anonymous_only=None, cache_middleware_key_prefix='', cache_middleware_alias='default', cache_middleware_seconds=600, cache_middleware_anonymous_only=False, **kwargs):
         # We need to differentiate between "provided, but using default value",
         # and "not provided". If the value is provided using a default, then
         # we fall back to system defaults. If it is not provided at all,
@@ -176,7 +179,7 @@ class CacheMiddleware(UpdateCacheMiddleware, FetchFromCacheMiddleware):
             else:
                 self.key_prefix = ''
         except KeyError:
-            self.key_prefix = settings.CACHE_MIDDLEWARE_KEY_PREFIX
+            self.key_prefix = cache_middleware_key_prefix
             cache_kwargs['KEY_PREFIX'] = self.key_prefix
 
         try:
@@ -186,14 +189,14 @@ class CacheMiddleware(UpdateCacheMiddleware, FetchFromCacheMiddleware):
             if cache_timeout is not None:
                 cache_kwargs['TIMEOUT'] = cache_timeout
         except KeyError:
-            self.cache_alias = settings.CACHE_MIDDLEWARE_ALIAS
+            self.cache_alias = cache_middleware_alias
             if cache_timeout is None:
-                cache_kwargs['TIMEOUT'] = settings.CACHE_MIDDLEWARE_SECONDS
+                cache_kwargs['TIMEOUT'] = cache_middleware_seconds
             else:
                 cache_kwargs['TIMEOUT'] = cache_timeout
 
         if cache_anonymous_only is None:
-            self.cache_anonymous_only = getattr(settings, 'CACHE_MIDDLEWARE_ANONYMOUS_ONLY', False)
+            self.cache_anonymous_only = cache_middleware_anonymous_only
         else:
             self.cache_anonymous_only = cache_anonymous_only
 
