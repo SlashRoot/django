@@ -7,7 +7,7 @@ import warnings
 import zipfile
 from optparse import make_option
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core import serializers
 from django.core.management.base import BaseCommand, CommandError
 from django.core.management.color import no_style
@@ -224,7 +224,8 @@ class Command(BaseCommand):
     find_fixtures = memoize(_find_fixtures, _label_to_fixtures_cache, 2)
 
     @cached_property
-    def fixture_dirs(self):
+    @uses_settings({'FIXTURE_DIRS':'fixture_dirs'})
+    def fixture_dirs(self, fixture_dirs=()):
         """
         Return a list of fixture directories.
 
@@ -237,7 +238,7 @@ class Command(BaseCommand):
             d = os.path.join(path, 'fixtures')
             if os.path.isdir(d):
                 dirs.append(d)
-        dirs.extend(list(settings.FIXTURE_DIRS))
+        dirs.extend(list(fixture_dirs))
         dirs.append('')
         dirs = [upath(os.path.abspath(os.path.realpath(d))) for d in dirs]
         return dirs
