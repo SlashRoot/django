@@ -1,7 +1,7 @@
 import collections
 import sys
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.management.color import color_style
 from django.utils.encoding import force_str
 from django.utils.itercompat import is_iterable
@@ -19,7 +19,8 @@ class ModelErrorCollection:
         self.outfile.write(self.style.ERROR(force_str("%s: %s\n" % (context, error))))
 
 
-def get_validation_errors(outfile, app=None):
+@uses_settings({'AUTH_USER_MODEL':'auth_user_model'})
+def get_validation_errors(outfile, app=None, auth_user_model='auth.User'):
     """
     Validates all models that are part of the specified app. If no app name is provided,
     validates all models of all installed apps. Writes errors, if any, to outfile.
@@ -50,7 +51,7 @@ def get_validation_errors(outfile, app=None):
             continue
 
         # If this is the current User model, check known validation problems with User models
-        if settings.AUTH_USER_MODEL == '%s.%s' % (opts.app_label, opts.object_name):
+        if auth_user_model == '%s.%s' % (opts.app_label, opts.object_name):
             # Check that REQUIRED_FIELDS is a list
             if not isinstance(cls.REQUIRED_FIELDS, (list, tuple)):
                 e.add(opts, 'The REQUIRED_FIELDS must be a list or tuple.')
