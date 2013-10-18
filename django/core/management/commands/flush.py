@@ -2,7 +2,7 @@ import sys
 from importlib import import_module
 from optparse import make_option
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.db import connections, router, transaction, models, DEFAULT_DB_ALIAS
 from django.core.management import call_command
 from django.core.management.base import NoArgsCommand, CommandError
@@ -27,7 +27,8 @@ class Command(NoArgsCommand):
            'from the database, any post-migration handlers will be '
            're-executed, and the initial_data fixture will be re-installed.')
 
-    def handle_noargs(self, **options):
+    @uses_settings({'INSTALLED_APPS':'installed_apps'})
+    def handle_noargs(self, installed_apps=(), **options):
         db = options.get('database')
         connection = connections[db]
         verbosity = int(options.get('verbosity'))
@@ -41,7 +42,7 @@ class Command(NoArgsCommand):
 
         # Import the 'management' module within each installed app, to register
         # dispatcher events.
-        for app_name in settings.INSTALLED_APPS:
+        for app_name in installed_apps:
             try:
                 import_module('.management', app_name)
             except ImportError:
