@@ -40,7 +40,7 @@ import json
 import time
 import zlib
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.utils import baseconv
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.encoding import force_bytes, force_str, force_text
@@ -74,9 +74,10 @@ def base64_hmac(salt, value, key):
     return b64_encode(salted_hmac(salt, value, key).digest())
 
 
-def get_cookie_signer(salt='django.core.signing.get_cookie_signer'):
-    Signer = import_by_path(settings.SIGNING_BACKEND)
-    return Signer('django.http.cookies' + settings.SECRET_KEY, salt=salt)
+@uses_settings({'SIGNING_BACKEND':'signing_backend', 'SECRET_KEY':'secret_key'})
+def get_cookie_signer(salt='django.core.signing.get_cookie_signer', signing_backend='django.core.signing.TimestampSigner', secret_key=''):
+    Signer = import_by_path(signing_backend)
+    return Signer('django.http.cookies' + secret_key, salt=salt)
 
 
 class JSONSerializer(object):
@@ -146,10 +147,11 @@ def loads(s, key=None, salt='django.core.signing', serializer=JSONSerializer, ma
 
 class Signer(object):
 
-    def __init__(self, key=None, sep=':', salt=None):
+    @uses_settings({'SECRET_KEY':'secret_key'})
+    def __init__(self, key=None, sep=':', salt=None, secret_key=''):
         # Use of native strings in all versions of Python
         self.sep = str(sep)
-        self.key = str(key or settings.SECRET_KEY)
+        self.key = str(key or secret_key)
         self.salt = str(salt or
             '%s.%s' % (self.__class__.__module__, self.__class__.__name__))
 
