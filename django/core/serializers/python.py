@@ -5,7 +5,7 @@ other serializers.
 """
 from __future__ import unicode_literals
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.serializers import base
 from django.db import models, DEFAULT_DB_ALIAS
 from django.utils.encoding import smart_text, is_protected_type
@@ -74,7 +74,8 @@ class Serializer(base.Serializer):
         return self.objects
 
 
-def Deserializer(object_list, **options):
+@uses_settings({'DEFAULT_CHARSET':'default_charset'})
+def Deserializer(object_list, default_charset='utf-8', **options):
     """
     Deserialize simple Python objects back into Django ORM instances.
 
@@ -100,7 +101,7 @@ def Deserializer(object_list, **options):
                 continue
 
             if isinstance(field_value, str):
-                field_value = smart_text(field_value, options.get("encoding", settings.DEFAULT_CHARSET), strings_only=True)
+                field_value = smart_text(field_value, options.get("encoding", default_charset), strings_only=True)
 
             field = Model._meta.get_field(field_name)
 
