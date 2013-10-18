@@ -8,7 +8,7 @@ try:
 except ImportError:
     import pickle
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.cache.backends.base import BaseCache, DEFAULT_TIMEOUT
 from django.db import connections, transaction, router, DatabaseError
 from django.utils import timezone, six
@@ -85,7 +85,8 @@ class DatabaseCache(BaseDatabaseCache):
         self.validate_key(key)
         return self._base_set('add', key, value, timeout)
 
-    def _base_set(self, mode, key, value, timeout=DEFAULT_TIMEOUT):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def _base_set(self, mode, key, value, timeout=DEFAULT_TIMEOUT, use_tz=False):
         if timeout == DEFAULT_TIMEOUT:
             timeout = self.default_timeout
         db = router.db_for_write(self.cache_model_class)
@@ -98,7 +99,7 @@ class DatabaseCache(BaseDatabaseCache):
         now = now.replace(microsecond=0)
         if timeout is None:
             exp = datetime.max
-        elif settings.USE_TZ:
+        elif use_tz:
             exp = datetime.utcfromtimestamp(time.time() + timeout)
         else:
             exp = datetime.fromtimestamp(time.time() + timeout)
@@ -141,7 +142,8 @@ class DatabaseCache(BaseDatabaseCache):
 
         cursor.execute("DELETE FROM %s WHERE cache_key = %%s" % table, [key])
 
-    def has_key(self, key, version=None):
+    @uses_settings({'USE_TZ':'use_tz'})
+    def has_key(self, key, version=None, use_tz=False):
         key = self.make_key(key, version=version)
         self.validate_key(key)
 
@@ -149,7 +151,7 @@ class DatabaseCache(BaseDatabaseCache):
         table = connections[db].ops.quote_name(self._table)
         cursor = connections[db].cursor()
 
-        if settings.USE_TZ:
+        if use_tz:
             now = datetime.utcnow()
         else:
             now = datetime.now()
