@@ -9,7 +9,7 @@ from __future__ import unicode_literals
 import logging
 import re
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.urlresolvers import get_callable
 from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_text
@@ -26,11 +26,12 @@ REASON_BAD_TOKEN = "CSRF token missing or incorrect."
 
 CSRF_KEY_LENGTH = 32
 
-def _get_failure_view():
+@uses_settings({'CSRF_FAILURE_VIEW':'csrf_failure_view'})
+def _get_failure_view(csrf_failure_view='django.views.csrf.csrf_failure'):
     """
     Returns the view to be used for CSRF rejections
     """
-    return get_callable(settings.CSRF_FAILURE_VIEW)
+    return get_callable(csrf_failure_view)
 
 
 def _get_new_csrf_key():
@@ -98,14 +99,15 @@ class CsrfViewMiddleware(object):
         )
         return _get_failure_view()(request, reason=reason)
 
-    def process_view(self, request, callback, callback_args, callback_kwargs):
+    @uses_settings({'CSRF_COOKIE_NAME':'csrf_cookie_name'})
+    def process_view(self, request, callback, callback_args, callback_kwargs, csrf_cookie_name='csrftoken'):
 
         if getattr(request, 'csrf_processing_done', False):
             return None
 
         try:
             csrf_token = _sanitize_token(
-                request.COOKIES[settings.CSRF_COOKIE_NAME])
+                request.COOKIES[csrf_cookie_name])
             # Use same token next time
             request.META['CSRF_COOKIE'] = csrf_token
         except KeyError:
@@ -176,7 +178,8 @@ class CsrfViewMiddleware(object):
 
         return self._accept(request)
 
-    def process_response(self, request, response):
+    @uses_settings({'CSRF_COOKIE_NAME':'csrf_cookie_name', 'CSRF_COOKIE_DOMAIN':'csrf_cookie_domain', 'CSRF_COOKIE_PATH':'csrf_cookie_path', 'CSRF_COOKIE_SECURE':'csrf_cookie_secure', 'CSRF_COOKIE_HTTPONLY':'csrf_cookie_httponly'})
+    def process_response(self, request, response, csrf_cookie_name='csrftoken', csrf_cookie_domain=None, csrf_cookie_path='/', csrf_cookie_secure=False, csrf_cookie_httponly=False):
         if getattr(response, 'csrf_processing_done', False):
             return response
 
@@ -191,13 +194,13 @@ class CsrfViewMiddleware(object):
 
         # Set the CSRF cookie even if it's already set, so we renew
         # the expiry timer.
-        response.set_cookie(settings.CSRF_COOKIE_NAME,
+        response.set_cookie(csrf_cookie_name,
                             request.META["CSRF_COOKIE"],
                             max_age = 60 * 60 * 24 * 7 * 52,
-                            domain=settings.CSRF_COOKIE_DOMAIN,
-                            path=settings.CSRF_COOKIE_PATH,
-                            secure=settings.CSRF_COOKIE_SECURE,
-                            httponly=settings.CSRF_COOKIE_HTTPONLY
+                            domain=csrf_cookie_domain,
+                            path=csrf_cookie_path,
+                            secure=csrf_cookie_secure,
+                            httponly=csrf_cookie_httponly
                             )
         # Content varies with the CSRF cookie, so set the Vary header.
         patch_vary_headers(response, ('Cookie',))
