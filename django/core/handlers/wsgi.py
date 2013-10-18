@@ -7,7 +7,7 @@ from io import BytesIO
 from threading import Lock
 
 from django import http
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core import signals
 from django.core.handlers import base
 from django.core.urlresolvers import set_script_prefix
@@ -225,7 +225,8 @@ def get_path_info(environ):
     return path_info.decode(UTF_8)
 
 
-def get_script_name(environ):
+@uses_settings({'FORCE_SCRIPT_NAME':'force_script_name'})
+def get_script_name(environ, force_script_name=None):
     """
     Returns the equivalent of the HTTP request's SCRIPT_NAME environment
     variable. If Apache mod_rewrite has been used, returns what would have been
@@ -233,8 +234,8 @@ def get_script_name(environ):
     from the client's perspective), unless the FORCE_SCRIPT_NAME setting is
     set (to anything).
     """
-    if settings.FORCE_SCRIPT_NAME is not None:
-        return force_text(settings.FORCE_SCRIPT_NAME)
+    if force_script_name is not None:
+        return force_text(force_script_name)
 
     # If Apache's mod_rewrite had a whack at the URL, Apache set either
     # SCRIPT_URL or REDIRECT_URL to the full resource URL before applying any
