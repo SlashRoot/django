@@ -36,7 +36,7 @@ class LocaleMiddleware(object):
         request.LANGUAGE_CODE = translation.get_language()
 
     @uses_settings({'APPEND_SLASH':'append_slash'})
-    def process_response(self, request, response, append_slash=None):
+    def process_response(self, request, response, append_slash=True):
         language = translation.get_language()
         language_from_path = translation.get_language_from_path(
                 request.path_info, supported=self._supported_languages

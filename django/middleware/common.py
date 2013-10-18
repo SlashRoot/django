@@ -37,7 +37,7 @@ class CommonMiddleware(object):
     """
 
     @uses_settings({'DISALLOWED_USER_AGENTS':'disallowed_user_agents', 'APPEND_SLASH':'append_slash', 'DEBUG':'debug', 'PREPEND_WWW':'prepend_www'})
-    def process_request(self, request, disallowed_user_agents=None, append_slash=None, debug=None, prepend_www=None):
+    def process_request(self, request, disallowed_user_agents=(), append_slash=True, debug=False, prepend_www=False):
         """
         Check for denied User-Agents and rewrite the URL based on
         settings.APPEND_SLASH and settings.PREPEND_WWW
@@ -105,7 +105,7 @@ class CommonMiddleware(object):
         return http.HttpResponsePermanentRedirect(newurl)
 
     @uses_settings({'SEND_BROKEN_LINK_EMAILS':'send_broken_link_emails', 'USE_ETAGS':'use_etags'})
-    def process_response(self, request, response, send_broken_link_emails=None, use_etags=None):
+    def process_response(self, request, response, send_broken_link_emails=False, use_etags=False):
         """
         Calculate the ETag, if needed.
         """
@@ -137,7 +137,7 @@ class CommonMiddleware(object):
 class BrokenLinkEmailsMiddleware(object):
 
     @uses_settings({'DEBUG':'debug'})
-    def process_response(self, request, response, debug=None):
+    def process_response(self, request, response, debug=False):
         """
         Send broken link emails for relevant 404 NOT FOUND responses.
         """
@@ -167,7 +167,7 @@ class BrokenLinkEmailsMiddleware(object):
         return bool(re.match("^https?://%s/" % re.escape(domain), referer))
 
     @uses_settings({'IGNORABLE_404_URLS':'ignorable_404_urls'})
-    def is_ignorable_request(self, request, uri, domain, referer, ignorable_404_urls=None):
+    def is_ignorable_request(self, request, uri, domain, referer, ignorable_404_urls=()):
         """
         Returns True if the given request *shouldn't* notify the site managers.
         """
