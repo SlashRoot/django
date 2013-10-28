@@ -47,7 +47,7 @@ IntegrityError = Database.IntegrityError
 
 
 @uses_settings({'USE_TZ':'use_tz'})
-def parse_datetime_with_timezone_support(value, use_tz=None):
+def parse_datetime_with_timezone_support(value, use_tz=False):
     dt = parse_datetime(value)
     # Confirm that dt is naive before overwriting its tzinfo.
     if dt is not None and use_tz and timezone.is_naive(dt):
@@ -56,7 +56,7 @@ def parse_datetime_with_timezone_support(value, use_tz=None):
 
 
 @uses_settings({'USE_TZ':'use_tz'})
-def adapt_datetime_with_timezone_support(value, use_tz=None):
+def adapt_datetime_with_timezone_support(value, use_tz=False):
     # Equivalent to DateTimeField.get_db_prep_value. Used only by raw SQL.
     if use_tz:
         if timezone.is_naive(value):
@@ -186,7 +186,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return "django_date_trunc('%s', %s)" % (lookup_type.lower(), field_name)
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def datetime_extract_sql(self, lookup_type, field_name, tzname, use_tz=None):
+    def datetime_extract_sql(self, lookup_type, field_name, tzname, use_tz=False):
         # Same comment as in date_extract_sql.
         if use_tz:
             if pytz is None:
@@ -197,7 +197,7 @@ class DatabaseOperations(BaseDatabaseOperations):
             lookup_type.lower(), field_name), [tzname]
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def datetime_trunc_sql(self, lookup_type, field_name, tzname, use_tz=None):
+    def datetime_trunc_sql(self, lookup_type, field_name, tzname, use_tz=False):
         # Same comment as in date_trunc_sql.
         if use_tz:
             if pytz is None:
@@ -254,7 +254,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return sql
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def value_to_db_datetime(self, value, use_tz=None):
+    def value_to_db_datetime(self, value, use_tz=False):
         if value is None:
             return None
 

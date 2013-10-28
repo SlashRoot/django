@@ -97,7 +97,7 @@ def typecast_time(s): # does NOT store time zone information
     return datetime.time(int(hour), int(minutes), int(seconds), int(float('.' + microseconds) * 1000000))
 
 @uses_settings({'USE_TZ':'use_tz'})
-def typecast_timestamp(s, use_tz=None): # does NOT store time zone information
+def typecast_timestamp(s, use_tz=False): # does NOT store time zone information
     # "2005-07-29 15:48:00.590358-05"
     # "2005-07-29 09:56:00-05"
     if not s:

@@ -314,7 +314,7 @@ class BaseDatabaseCreation(object):
         ]
 
     @uses_settings({'DATABASES': 'databases', 'CACHES': 'caches'})
-    def create_test_db(self, verbosity=1, autoclobber=False, caches=None, databases=None):
+    def create_test_db(self, verbosity=1, autoclobber=False, caches={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',}}, databases={}):
         """
         Creates a test database, prompting the user for confirmation if the
         database already exists. Returns the name of the test database created.

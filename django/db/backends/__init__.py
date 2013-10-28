@@ -150,7 +150,7 @@ class BaseDatabaseWrapper(object):
     ##### Generic wrappers for PEP-249 connection methods #####
 
     @uses_settings({'DEBUG':'debug'})
-    def cursor(self, debug=None):
+    def cursor(self, debug=False):
         """
         Creates a cursor, opening a connection if necessary.
         """
@@ -196,23 +196,23 @@ class BaseDatabaseWrapper(object):
 
     ##### Backend-specific savepoint management methods #####
 
-    def _savepoint(self, sid, debug=None):
+    def _savepoint(self, sid, debug=False):
         self.cursor().execute(self.ops.savepoint_create_sql(sid))
 
-    def _savepoint_rollback(self, sid, debug=None):
+    def _savepoint_rollback(self, sid, debug=False):
         self.cursor().execute(self.ops.savepoint_rollback_sql(sid))
 
-    def _savepoint_commit(self, sid, debug=None):
+    def _savepoint_commit(self, sid, debug=False):
         self.cursor().execute(self.ops.savepoint_commit_sql(sid))
 
-    def _savepoint_allowed(self, debug=None):
+    def _savepoint_allowed(self, debug=False):
         # Savepoints cannot be created outside a transaction
         return self.features.uses_savepoints and not self.get_autocommit()
 
     ##### Generic savepoint management methods #####
 
     @uses_settings({'DEBUG':'debug'})
-    def savepoint(self, debug=None):
+    def savepoint(self, debug=False):
         """
         Creates a savepoint inside the current transaction. Returns an
         identifier for the savepoint that will be used for the subsequent
@@ -233,7 +233,7 @@ class BaseDatabaseWrapper(object):
         return sid
 
     @uses_settings({'DEBUG':'debug'})
-    def savepoint_rollback(self, sid, debug=None):
+    def savepoint_rollback(self, sid, debug=False):
         """
         Rolls back to a savepoint. Does nothing if savepoints are not supported.
         """
@@ -244,7 +244,7 @@ class BaseDatabaseWrapper(object):
         self._savepoint_rollback(sid)
 
     @uses_settings({'DEBUG':'debug'})
-    def savepoint_commit(self, sid, debug=None):
+    def savepoint_commit(self, sid, debug=False):
         """
         Releases a savepoint. Does nothing if savepoints are not supported.
         """
@@ -1147,7 +1147,7 @@ class BaseDatabaseOperations(object):
         return [first, second]
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def year_lookup_bounds_for_datetime_field(self, value, use_tz=None):
+    def year_lookup_bounds_for_datetime_field(self, value, use_tz=False):
         """
         Returns a two-elements list with the lower and upper bound to be used
         with a BETWEEN operator to query a DateTimeField value using a year

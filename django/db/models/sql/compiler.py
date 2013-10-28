@@ -1067,7 +1067,7 @@ class SQLDateCompiler(SQLCompiler):
 
 class SQLDateTimeCompiler(SQLCompiler):
     @uses_settings({'USE_TZ':'use_tz'})
-    def results_iter(self, use_tz=None):
+    def results_iter(self, use_tz=False):
         """
         Returns an iterator over the results from executing this query.
         """

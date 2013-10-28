@@ -77,7 +77,7 @@ class Options(object):
         self.app_cache = cache
 
     @uses_settings({'INSTALLED_APPS':'installed_apps'})
-    def contribute_to_class(self, cls, name, installed_apps=None):
+    def contribute_to_class(self, cls, name, installed_apps={}):
         from django.db import connection
         from django.db.backends.util import truncate_name
 

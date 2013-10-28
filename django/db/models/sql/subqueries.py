@@ -241,7 +241,7 @@ class DateQuery(Query):
             self.add_filter(("%s__isnull" % field_name, False))
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def _check_field(self, field, use_tz=None):
+    def _check_field(self, field, use_tz=False):
         assert isinstance(field, DateField), \
             "%r isn't a DateField." % field.name
         if use_tz:

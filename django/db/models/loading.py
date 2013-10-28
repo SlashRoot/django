@@ -81,7 +81,7 @@ class BaseAppCache(object):
         self.loads_installed = False
 
     @uses_settings({'INSTALLED_APPS':'installed_apps'})
-    def _populate(self, installed_apps=None):
+    def _populate(self, installed_apps={}):
         """
         Stub method - this base class does no auto-loading.
         """
@@ -211,7 +211,7 @@ class BaseAppCache(object):
         return app_paths
 
     @uses_settings({'INSTALLED_APPS':'installed_apps'})
-    def get_app(self, app_label, emptyOK=False, installed_apps=None):
+    def get_app(self, app_label, emptyOK=False, installed_apps={}):
         """
         Returns the module containing the models for the given app_label.
 
@@ -352,7 +352,7 @@ class BaseAppCache(object):
         self._get_models_cache.clear()
 
     @uses_settings({'INSTALLED_APPS':'installed_apps'})
-    def set_available_apps(self, available, installed_apps=None):
+    def set_available_apps(self, available, installed_apps={}):
         if not set(available).issubset(set(installed_apps)):
             extra = set(available) - set(installed_apps)
             raise ValueError("Available apps isn't a subset of installed "

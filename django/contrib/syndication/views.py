@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from calendar import timegm
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib.sites.models import get_current_site
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.http import HttpResponse, Http404
@@ -110,7 +110,8 @@ class Feed(object):
         """
         return {'obj': kwargs.get('item'), 'site': kwargs.get('site')}
 
-    def get_feed(self, obj, request):
+    @uses_settings({'LANGUAGE_CODE':'language_code'})
+    def get_feed(self, obj, request, language_code='en-us'):
         """
         Returns a feedgenerator.DefaultFeed object, fully populated, for
         this feed. Raises FeedDoesNotExist for invalid parameters.
@@ -125,7 +126,7 @@ class Feed(object):
             subtitle = self.__get_dynamic_attr('subtitle', obj),
             link = link,
             description = self.__get_dynamic_attr('description', obj),
-            language = settings.LANGUAGE_CODE,
+            language = language_code,
             feed_url = add_domain(
                 current_site.domain,
                 self.__get_dynamic_attr('feed_url', obj) or request.path,

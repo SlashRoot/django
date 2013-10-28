@@ -57,7 +57,7 @@ class DatabaseCreation(BaseDatabaseCreation):
         super(DatabaseCreation, self).__init__(connection)
 
     @uses_settings({'DATABASES':'databases'})
-    def _create_test_db(self, verbosity=1, autoclobber=False, database=None):
+    def _create_test_db(self, verbosity=1, autoclobber=False, database={}):
         TEST_NAME = self._test_database_name()
         TEST_USER = self._test_database_user()
         TEST_PASSWD = self._test_database_passwd()

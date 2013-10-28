@@ -165,7 +165,7 @@ class WhereNode(tree.Node):
         return cols
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def make_atom(self, child, qn, connection, use_tz=None):
+    def make_atom(self, child, qn, connection, use_tz=False):
         """
         Turn a tuple (Constraint(table_alias, column_name, db_type),
         lookup_type, value_annotation, params) into valid SQL.

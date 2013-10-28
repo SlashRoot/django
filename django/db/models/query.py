@@ -649,7 +649,7 @@ class QuerySet(object):
                 _field_name=field_name, _kind=kind, _order=order)
 
     @uses_settings({'USE_TZ':'use_tz'})
-    def datetimes(self, field_name, kind, order='ASC', tzinfo=None, use_tz=None):
+    def datetimes(self, field_name, kind, order='ASC', tzinfo=None, use_tz=False):
         """
         Returns a list of datetime objects representing all available
         datetimes for the given field_name, scoped to 'kind'.
