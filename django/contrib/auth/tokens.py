@@ -1,5 +1,5 @@
 from datetime import date
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.utils.http import int_to_base36, base36_to_int
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils import six
@@ -17,7 +17,8 @@ class PasswordResetTokenGenerator(object):
         """
         return self._make_token_with_timestamp(user, self._num_days(self._today()))
 
-    def check_token(self, user, token):
+    @uses_settings({'PASSWORD_RESET_TIMEOUT_DAYS':'password_reset_timeout_days'})
+    def check_token(self, user, token, password_reset_timeout_days=3):
         """
         Check that a password reset token is correct for a given user.
         """
@@ -37,7 +38,7 @@ class PasswordResetTokenGenerator(object):
             return False
 
         # Check the timestamp is within limit
-        if (self._num_days(self._today()) - ts) > settings.PASSWORD_RESET_TIMEOUT_DAYS:
+        if (self._num_days(self._today()) - ts) > password_reset_timeout_days:
             return False
 
         return True
