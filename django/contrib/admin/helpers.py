@@ -14,7 +14,7 @@ from django.utils.html import conditional_escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 
 
 ACTION_CHECKBOX_NAME = '_selected_action'
@@ -63,9 +63,10 @@ class Fieldset(object):
         self.model_admin = model_admin
         self.readonly_fields = readonly_fields
 
-    def _media(self):
+    @uses_settings({'DEBUG':'debug'})
+    def _media(self, debug=False):
         if 'collapse' in self.classes:
-            extra = '' if settings.DEBUG else '.min'
+            extra = '' if debug else '.min'
             js = ['jquery%s.js' % extra,
                   'jquery.init.js',
                   'collapse%s.js' % extra]
