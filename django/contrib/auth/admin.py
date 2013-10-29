@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib import admin
 from django.contrib.admin.options import IS_POPUP_VAR
 from django.contrib.auth.forms import (UserCreationForm, UserChangeForm,
@@ -91,7 +91,8 @@ class UserAdmin(admin.ModelAdmin):
     @sensitive_post_parameters_m
     @csrf_protect_m
     @transaction.atomic
-    def add_view(self, request, form_url='', extra_context=None):
+    @uses_settings({'DEBUG':'debug'})
+    def add_view(self, request, form_url='', extra_context=None, debug=False):
         # It's an error for a user to have add permission but NOT change
         # permission for users. If we allowed such users to add users, they
         # could create superusers, which would mean they would essentially have
@@ -99,7 +100,7 @@ class UserAdmin(admin.ModelAdmin):
         # disallow users from adding users if they don't have change
         # permission.
         if not self.has_change_permission(request):
-            if self.has_add_permission(request) and settings.DEBUG:
+            if self.has_add_permission(request) and debug:
                 # Raise Http404 in debug mode so that the user gets a helpful
                 # error message.
                 raise Http404(
