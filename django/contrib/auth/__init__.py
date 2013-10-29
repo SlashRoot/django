@@ -1,7 +1,7 @@
 import inspect
 import re
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.utils.module_loading import import_by_path
 from django.middleware.csrf import rotate_token
@@ -17,9 +17,10 @@ def load_backend(path):
     return import_by_path(path)()
 
 
-def get_backends():
+@uses_settings({'AUTHENTICATION_BACKENDS':'authentication_backends'})
+def get_backends(authentication_backends=('django.contrib.auth.backends.ModelBackend',)):
     backends = []
-    for backend_path in settings.AUTHENTICATION_BACKENDS:
+    for backend_path in authentication_backends:
         backends.append(load_backend(backend_path))
     if not backends:
         raise ImproperlyConfigured('No authentication backends have been defined. Does AUTHENTICATION_BACKENDS contain anything?')
@@ -111,23 +112,25 @@ def logout(request):
         request.user = AnonymousUser()
 
 
-def get_user_model():
+@uses_settings({'AUTH_USER_MODEL':'auth_user_model'})
+def get_user_model(auth_user_model='auth.user'):
     """
     Returns the User model that is active in this project.
     """
     from django.db.models import get_model
 
     try:
-        app_label, model_name = settings.AUTH_USER_MODEL.split('.')
+        app_label, model_name = auth_user_model.split('.')
     except ValueError:
         raise ImproperlyConfigured("AUTH_USER_MODEL must be of the form 'app_label.model_name'")
     user_model = get_model(app_label, model_name)
     if user_model is None:
-        raise ImproperlyConfigured("AUTH_USER_MODEL refers to model '%s' that has not been installed" % settings.AUTH_USER_MODEL)
+        raise ImproperlyConfigured("AUTH_USER_MODEL refers to model '%s' that has not been installed" % auth_user_model)
     return user_model
 
 
-def get_user(request):
+@uses_settings({'AUTHENTICATION_BACKENDS':'authentication_backends'})
+def get_user(request, authentication_backends=('django.contrib.auth.backends.ModelBackend',)):
     """
     Returns the user model instance associated with the given request session.
     If no user is retrieved an instance of `AnonymousUser` is returned.
@@ -136,7 +139,7 @@ def get_user(request):
     try:
         user_id = request.session[SESSION_KEY]
         backend_path = request.session[BACKEND_SESSION_KEY]
-        assert backend_path in settings.AUTHENTICATION_BACKENDS
+        assert backend_path in authentication_backends
         backend = load_backend(backend_path)
         user = backend.get_user(user_id) or AnonymousUser()
     except (KeyError, AssertionError):
