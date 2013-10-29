@@ -5,7 +5,7 @@ from functools import partial, reduce, update_wrapper
 import warnings
 
 from django import forms
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib import messages
 from django.contrib.admin import widgets, helpers
 from django.contrib.admin.util import (unquote, flatten_fieldsets, get_deleted_objects,
@@ -484,8 +484,9 @@ class ModelAdmin(BaseModelAdmin):
     urls = property(urls)
 
     @property
-    def media(self):
-        extra = '' if settings.DEBUG else '.min'
+    @uses_settings({'DEBUG':'debug'})
+    def media(self, debug=False):
+        extra = '' if debug else '.min'
         js = [
             'core.js',
             'admin/RelatedObjectLookups.js',
@@ -1625,8 +1626,9 @@ class InlineModelAdmin(BaseModelAdmin):
             self.verbose_name_plural = self.model._meta.verbose_name_plural
 
     @property
-    def media(self):
-        extra = '' if settings.DEBUG else '.min'
+    @uses_settings({'DEBUG':'debug'})
+    def media(self, debug=False):
+        extra = '' if debug else '.min'
         js = ['jquery%s.js' % extra, 'jquery.init.js', 'inlines%s.js' % extra]
         if self.prepopulated_fields:
             js.extend(['urlify.js', 'prepopulate%s.js' % extra])
