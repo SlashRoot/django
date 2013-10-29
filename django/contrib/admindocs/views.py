@@ -5,7 +5,7 @@ import re
 
 from django import template
 from django.template import RequestContext
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import models
 from django.shortcuts import render_to_response
@@ -112,12 +112,13 @@ def template_filter_index(request):
     }, context_instance=RequestContext(request))
 
 @staff_member_required
-def view_index(request):
+@uses_settings({'ADMIN_FOR':'admin_for'})
+def view_index(request, admin_for=()):
     if not utils.docutils_is_available:
         return missing_docutils_page(request)
 
-    if settings.ADMIN_FOR:
-        settings_modules = [import_module(m) for m in settings.ADMIN_FOR]
+    if admin_for:
+        settings_modules = [import_module(m) for m in admin_for]
     else:
         settings_modules = [settings]
 
@@ -273,9 +274,10 @@ def model_detail(request, app_label, model_name):
     }, context_instance=RequestContext(request))
 
 @staff_member_required
-def template_detail(request, template):
+@uses_settings({'ADMIN_FOR':'admin_for'})
+def template_detail(request, template, admin_for=()):
     templates = []
-    for site_settings_module in settings.ADMIN_FOR:
+    for site_settings_module in admin_for:
         settings_mod = import_module(site_settings_module)
         if Site._meta.installed:
             site_obj = Site.objects.get(pk=settings_mod.SITE_ID)
