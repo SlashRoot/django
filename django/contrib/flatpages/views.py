@@ -1,4 +1,4 @@
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib.flatpages.models import FlatPage
 from django.contrib.sites.models import get_current_site
 from django.http import Http404, HttpResponse, HttpResponsePermanentRedirect
@@ -17,7 +17,8 @@ DEFAULT_TEMPLATE = 'flatpages/default.html'
 # or a redirect is required for authentication, the 404 needs to be returned
 # without any CSRF checks. Therefore, we only
 # CSRF protect the internal implementation.
-def flatpage(request, url):
+@uses_settings({'APPEND_SLASH':'append_slash'})
+def flatpage(request, url, append_slash=True):
     """
     Public interface to the flat page view.
 
@@ -35,7 +36,7 @@ def flatpage(request, url):
         f = get_object_or_404(FlatPage,
             url__exact=url, sites__id__exact=site_id)
     except Http404:
-        if not url.endswith('/') and settings.APPEND_SLASH:
+        if not url.endswith('/') and append_slash:
             url += '/'
             f = get_object_or_404(FlatPage,
                 url__exact=url, sites__id__exact=site_id)
