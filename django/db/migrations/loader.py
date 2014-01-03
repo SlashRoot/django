@@ -39,7 +39,7 @@ class MigrationLoader(object):
 
     @classmethod
     @uses_settings({'MIGRATION_MODULES':'migration_modules'})
-    def migrations_module(cls, app_label, migration_modules=None):
+    def migrations_module(cls, app_label, migration_modules={}):
         if app_label in migration_modules:
             return migration_modules[app_label]
         app = cache.get_app(app_label)

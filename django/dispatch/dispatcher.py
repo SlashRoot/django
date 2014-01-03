@@ -1,6 +1,7 @@
 import weakref
 import threading
 
+from django.utils.unsetting import uses_settings
 from django.dispatch import saferef
 from django.utils.six.moves import xrange
 
@@ -47,7 +48,8 @@ class Signal(object):
         # .disconnect() is called and populated on send().
         self.sender_receivers_cache = weakref.WeakKeyDictionary() if use_caching else {}
 
-    def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):
+    @uses_settings({'DEBUG':'debug'})
+    def connect(self, receiver, sender=None, weak=True, dispatch_uid=None, debug=False):
         """
         Connect receiver to sender for signal.
 
@@ -82,10 +84,9 @@ class Signal(object):
                 a receiver. This will usually be a string, though it may be
                 anything hashable.
         """
-        from django.conf import settings
 
         # If DEBUG is on, check that we got a good receiver
-        if settings.DEBUG:
+        if debug:
             import inspect
             assert callable(receiver), "Signal receivers must be callable."
 

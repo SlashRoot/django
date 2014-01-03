@@ -6,7 +6,7 @@ import os
 import posixpath
 import re
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.cache import (get_cache, InvalidCacheBackendError,
                                cache as default_cache)
 from django.core.exceptions import ImproperlyConfigured
@@ -27,11 +27,12 @@ class StaticFilesStorage(FileSystemStorage):
     The defaults for ``location`` and ``base_url`` are
     ``STATIC_ROOT`` and ``STATIC_URL``.
     """
-    def __init__(self, location=None, base_url=None, *args, **kwargs):
+    @uses_settings({'STATIC_ROOT':'static_root', 'STATIC_URL':'static_url'})
+    def __init__(self, location=None, base_url=None, static_root='', static_url=None, *args, **kwargs):
         if location is None:
-            location = settings.STATIC_ROOT
+            location = static_root
         if base_url is None:
-            base_url = settings.STATIC_URL
+            base_url = static_url
         check_settings(base_url)
         super(StaticFilesStorage, self).__init__(location, base_url,
                                                  *args, **kwargs)
@@ -117,11 +118,12 @@ class CachedFilesMixin(object):
     def cache_key(self, name):
         return 'staticfiles:%s' % hashlib.md5(force_bytes(name)).hexdigest()
 
-    def url(self, name, force=False):
+    @uses_settings({'DEBUG':'debug'})
+    def url(self, name, force=False, debug=False):
         """
         Returns the real URL in DEBUG mode.
         """
-        if settings.DEBUG and not force:
+        if debug and not force:
             hashed_name, fragment = name, ''
         else:
             clean_name, fragment = urldefrag(name)
@@ -196,7 +198,8 @@ class CachedFilesMixin(object):
 
         return converter
 
-    def post_process(self, paths, dry_run=False, **options):
+    @uses_settings({'FILE_CHARSET':'file_charset'})
+    def post_process(self, paths, dry_run=False, file_charset='utf-8', **options):
         """
         Post process the given OrderedDict of files (called from collectstatic).
 
@@ -243,7 +246,7 @@ class CachedFilesMixin(object):
 
                 # ..to apply each replacement pattern to the content
                 if name in adjustable_paths:
-                    content = original_file.read().decode(settings.FILE_CHARSET)
+                    content = original_file.read().decode(file_charset)
                     for patterns in self._patterns.values():
                         for pattern, template in patterns:
                             converter = self.url_converter(name, template)
@@ -302,7 +305,8 @@ class AppStaticStorage(FileSystemStorage):
 
 
 class ConfiguredStorage(LazyObject):
-    def _setup(self):
-        self._wrapped = get_storage_class(settings.STATICFILES_STORAGE)()
+    @uses_settings({'STATICFILES_STORAGE':'other_staticfiles_storage'})
+    def _setup(self, other_staticfiles_storage='django.contrib.staticfiles.storage.StaticFilesStorage'):
+        self._wrapped = get_storage_class(other_staticfiles_storage)()
 
 staticfiles_storage = ConfiguredStorage()

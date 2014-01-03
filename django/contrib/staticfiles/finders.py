@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import os
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.storage import default_storage, Storage, FileSystemStorage
 from django.utils.functional import empty, memoize, LazyObject
@@ -44,21 +44,22 @@ class FileSystemFinder(BaseFinder):
     A static files finder that uses the ``STATICFILES_DIRS`` setting
     to locate files.
     """
-    def __init__(self, apps=None, *args, **kwargs):
+    @uses_settings({'STATICFILES_DIRS':'staticfiles_dirs', 'STATIC_ROOT':'static_root'})
+    def __init__(self, apps=None, staticfiles_dirs=(), static_root='', *args, **kwargs):
         # List of locations with static files
         self.locations = []
         # Maps dir paths to an appropriate storage instance
         self.storages = OrderedDict()
-        if not isinstance(settings.STATICFILES_DIRS, (list, tuple)):
+        if not isinstance(staticfiles_dirs, (list, tuple)):
             raise ImproperlyConfigured(
                 "Your STATICFILES_DIRS setting is not a tuple or list; "
                 "perhaps you forgot a trailing comma?")
-        for root in settings.STATICFILES_DIRS:
+        for root in staticfiles_dirs:
             if isinstance(root, (list, tuple)):
                 prefix, root = root
             else:
                 prefix = ''
-            if os.path.abspath(settings.STATIC_ROOT) == os.path.abspath(root):
+            if os.path.abspath(static_root) == os.path.abspath(root):
                 raise ImproperlyConfigured(
                     "The STATICFILES_DIRS setting should "
                     "not contain the STATIC_ROOT setting")
@@ -115,13 +116,20 @@ class AppDirectoriesFinder(BaseFinder):
     """
     storage_class = AppStaticStorage
 
-    def __init__(self, apps=None, *args, **kwargs):
+    @uses_settings({'INSTALLED_APPS':'installed_apps'})
+    def __init__(self, apps=None, installed_apps=(
+		'django.contrib.admin',
+		'django.contrib.auth',
+		'django.contrib.contenttypes',
+		'django.contrib.sessions',
+		'django.contrib.messages',
+		'django.contrib.staticfiles'), *args, **kwargs):
         # The list of apps that are handled
         self.apps = []
         # Mapping of app module paths to storage instances
         self.storages = OrderedDict()
         if apps is None:
-            apps = settings.INSTALLED_APPS
+            apps = installed_apps
         for app in apps:
             app_storage = self.storage_class(app)
             if os.path.isdir(app_storage.location):
@@ -248,9 +256,12 @@ def find(path, all=False):
     # No match.
     return [] if all else None
 
-
-def get_finders():
-    for finder_path in settings.STATICFILES_FINDERS:
+@uses_settings({'STATICFILES_FINDERS':'staticfiles_finders',})
+def get_finders(staticfiles_finders=(
+	'django.contrib.staticfiles.finders.FileSystemFinder',
+	'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+	'django.contrib.staticfiles.finders.DefaultStorageFinder')):
+    for finder_path in staticfiles_finders:
         yield get_finder(finder_path)
 
 
