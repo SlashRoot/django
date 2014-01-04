@@ -9,7 +9,7 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core import signals
 from django.core import signing
 from django.core.exceptions import DisallowedRedirect
@@ -98,18 +98,19 @@ class HttpResponseBase(six.Iterator):
     status_code = 200
     reason_phrase = None        # Use default reason phrase for status code.
 
-    def __init__(self, content_type=None, status=None, reason=None):
+    @uses_settings({'DEFAULT_CHARSET':'default_charset', 'DEFAULT_CONTENT_TYPE':'default_content_type'})
+    def __init__(self, content_type=None, status=None, reason=None, default_charset='utf-8', default_content_type='text/html'):
         # _headers is a mapping of the lower-case name to the original case of
         # the header (required for working with legacy systems) and the header
         # value. Both the name of the header and its value are ASCII strings.
         self._headers = {}
-        self._charset = settings.DEFAULT_CHARSET
+        self._charset = default_charset
         self._closable_objects = []
         # This parameter is set by the handler. It's necessary to preserve the
         # historical behavior of request_finished.
         self._handler_class = None
         if not content_type:
-            content_type = "%s; charset=%s" % (settings.DEFAULT_CONTENT_TYPE,
+            content_type = "%s; charset=%s" % (default_content_type,
                     self._charset)
         self.cookies = SimpleCookie()
         if status is not None:

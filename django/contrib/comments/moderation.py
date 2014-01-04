@@ -56,7 +56,7 @@ class.
 
 import datetime
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.mail import send_mail
 from django.contrib.comments import signals
 from django.db.models.base import ModelBase
@@ -228,7 +228,8 @@ class CommentModerator(object):
                 return True
         return False
 
-    def email(self, comment, content_object, request):
+    @uses_settings({'MANAGERS':'managers', 'DEFAULT_FROM_EMAIL':'default_from_email'})
+    def email(self, comment, content_object, request, managers=(), default_from_email='webmaster@localhost'):
         """
         Send email notification of a new comment to site staff when email
         notifications have been requested.
@@ -236,14 +237,14 @@ class CommentModerator(object):
         """
         if not self.email_notification:
             return
-        recipient_list = [manager_tuple[1] for manager_tuple in settings.MANAGERS]
+        recipient_list = [manager_tuple[1] for manager_tuple in managers]
         t = loader.get_template('comments/comment_notification_email.txt')
         c = Context({ 'comment': comment,
                       'content_object': content_object })
         subject = '[%s] New comment posted on "%s"' % (get_current_site(request).name,
                                                           content_object)
         message = t.render(c)
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=True)
+        send_mail(subject, message, default_from_email, recipient_list, fail_silently=True)
 
 class Moderator(object):
     """

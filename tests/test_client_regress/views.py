@@ -1,6 +1,6 @@
 import json
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
@@ -89,13 +89,14 @@ def return_undecodable_binary(request):
         b'%PDF-1.4\r\n%\x93\x8c\x8b\x9e ReportLab Generated PDF document http://www.reportlab.com'
     )
 
-def return_json_file(request):
+@uses_settings({'DEFAULT_CHARSET':'default_charset'})
+def return_json_file(request, default_charset='utf-8'):
     "A view that parses and returns a JSON string as a file."
     match = CONTENT_TYPE_RE.match(request.META['CONTENT_TYPE'])
     if match:
         charset = match.group(1)
     else:
-        charset = settings.DEFAULT_CHARSET
+        charset = default_charset
 
     # This just checks that the uploaded data is JSON
     obj_dict = json.loads(request.body.decode(charset))

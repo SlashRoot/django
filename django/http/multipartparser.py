@@ -10,7 +10,7 @@ import base64
 import cgi
 import sys
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core.exceptions import SuspiciousMultipartForm
 from django.utils.datastructures import MultiValueDict
 from django.utils.encoding import force_text
@@ -40,7 +40,8 @@ class MultiPartParser(object):
     ``MultiValueDict.parse()`` reads the input stream in ``chunk_size`` chunks
     and returns a tuple of ``(MultiValueDict(POST), MultiValueDict(FILES))``.
     """
-    def __init__(self, META, input_data, upload_handlers, encoding=None):
+    @uses_settings({'DEFAULT_CHARSET':'default_charset'})
+    def __init__(self, META, input_data, upload_handlers, encoding=None, default_charset='utf-8'):
         """
         Initialize the MultiPartParser object.
 
@@ -91,7 +92,7 @@ class MultiPartParser(object):
         self._chunk_size = min([2**31-4] + possible_sizes)
 
         self._meta = META
-        self._encoding = encoding or settings.DEFAULT_CHARSET
+        self._encoding = encoding or default_charset
         self._content_length = content_length
         self._upload_handlers = upload_handlers
 

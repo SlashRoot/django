@@ -8,7 +8,7 @@ from copy import copy
 from importlib import import_module
 from io import BytesIO
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.core.handlers.base import BaseHandler
 from django.core.handlers.wsgi import WSGIRequest
@@ -130,7 +130,8 @@ def store_rendered_templates(store, signal, sender, template, context, **kwargs)
     store.setdefault('context', ContextList()).append(copy(context))
 
 
-def encode_multipart(boundary, data):
+@uses_settings({'DEFAULT_CHARSET':'default_charset'})
+def encode_multipart(boundary, data, default_charset='utf-8'):
     """
     Encodes multipart POST data from a dictionary of form values.
 
@@ -139,7 +140,7 @@ def encode_multipart(boundary, data):
     as an application/octet-stream; otherwise, str(value) will be sent.
     """
     lines = []
-    to_bytes = lambda s: force_bytes(s, settings.DEFAULT_CHARSET)
+    to_bytes = lambda s: force_bytes(s, default_charset)
 
     # Not by any means perfect, but good enough for our purposes.
     is_file = lambda thing: hasattr(thing, "read") and callable(thing.read)
@@ -176,8 +177,9 @@ def encode_multipart(boundary, data):
     return b'\r\n'.join(lines)
 
 
-def encode_file(boundary, key, file):
-    to_bytes = lambda s: force_bytes(s, settings.DEFAULT_CHARSET)
+@uses_settings({'DEFAULT_CHARSET':'default_charset'})
+def encode_file(boundary, key, file, default_charset='utf-8'):
+    to_bytes = lambda s: force_bytes(s, default_charset)
     if hasattr(file, 'content_type'):
         content_type = file.content_type
     else:
@@ -246,7 +248,8 @@ class RequestFactory(object):
         "Construct a generic request object."
         return WSGIRequest(self._base_environ(**request))
 
-    def _encode_data(self, data, content_type, ):
+    @uses_settings({'DEFAULT_CHARSET':'default_charset'})
+    def _encode_data(self, data, content_type, default_charset='utf-8'):
         if content_type is MULTIPART_CONTENT:
             return encode_multipart(BOUNDARY, data)
         else:
@@ -255,7 +258,7 @@ class RequestFactory(object):
             if match:
                 charset = match.group(1)
             else:
-                charset = settings.DEFAULT_CHARSET
+                charset = default_charset
             return force_bytes(data, encoding=charset)
 
     def _get_path(self, parsed):
@@ -315,11 +318,12 @@ class RequestFactory(object):
         "Construct a DELETE request."
         return self.generic('DELETE', path, data, content_type, **extra)
 
+    @uses_settings({'DEFAULT_CHARSET':'default_charset'})
     def generic(self, method, path,
-                data='', content_type='application/octet-stream', **extra):
+                data='', content_type='application/octet-stream', default_charset='utf-8', **extra):
         """Constructs an arbitrary HTTP request."""
         parsed = urlparse(path)
-        data = force_bytes(data, settings.DEFAULT_CHARSET)
+        data = force_bytes(data, default_charset)
         r = {
             'PATH_INFO':      self._get_path(parsed),
             'REQUEST_METHOD': str(method),
@@ -370,13 +374,14 @@ class Client(RequestFactory):
         """
         self.exc_info = sys.exc_info()
 
-    def _session(self):
+    @uses_settings({'INSTALLED_APPS':'installed_apps', 'SESSION_ENGINE':'session_engine', 'SESSION_COOKIE_NAME':'session_cookie_name'})
+    def _session(self, installed_apps=(), session_engine='django.contrib.sessions.backends.db', session_cookie_name='sessionid'):
         """
         Obtains the current session variables.
         """
-        if 'django.contrib.sessions' in settings.INSTALLED_APPS:
-            engine = import_module(settings.SESSION_ENGINE)
-            cookie = self.cookies.get(settings.SESSION_COOKIE_NAME, None)
+        if 'django.contrib.sessions' in installed_apps:
+            engine = import_module(session_engine)
+            cookie = self.cookies.get(session_cookie_name, None)
             if cookie:
                 return engine.SessionStore(cookie.value)
         return {}
@@ -515,7 +520,8 @@ class Client(RequestFactory):
             response = self._handle_redirects(response, **extra)
         return response
 
-    def login(self, **credentials):
+    @uses_settings({'INSTALLED_APPS':'installed_apps', 'SESSION_ENGINE':'session_engine', 'SESSION_COOKIE_NAME':'session_cookie_name', 'SESSION_COOKIE_DOMAIN':'session_cookie_domain', 'SESSION_COOKIE_SECURE':'session_cookie_secure'})
+    def login(self, installed_apps=(), session_engine='django.contrib.sessions.backends.db', session_cookie_name='sessionid', session_cookie_domain=None, session_cookie_secure=False, **credentials):
         """
         Sets the Factory to appear as if it has successfully logged into a site.
 
@@ -525,8 +531,8 @@ class Client(RequestFactory):
         """
         user = authenticate(**credentials)
         if user and user.is_active \
-                and 'django.contrib.sessions' in settings.INSTALLED_APPS:
-            engine = import_module(settings.SESSION_ENGINE)
+                and 'django.contrib.sessions' in installed_apps:
+            engine = import_module(session_engine)
 
             # Create a fake request to store login details.
             request = HttpRequest()
@@ -540,13 +546,13 @@ class Client(RequestFactory):
             request.session.save()
 
             # Set the cookie to represent the session.
-            session_cookie = settings.SESSION_COOKIE_NAME
+            session_cookie = session_cookie_name
             self.cookies[session_cookie] = request.session.session_key
             cookie_data = {
                 'max-age': None,
                 'path': '/',
-                'domain': settings.SESSION_COOKIE_DOMAIN,
-                'secure': settings.SESSION_COOKIE_SECURE or None,
+                'domain': session_cookie_domain,
+                'secure': session_cookie_secure or None,
                 'expires': None,
             }
             self.cookies[session_cookie].update(cookie_data)
@@ -555,14 +561,15 @@ class Client(RequestFactory):
         else:
             return False
 
-    def logout(self):
+    @uses_settings({'SESSION_ENGINE':'session_engine'})
+    def logout(self, session_engine='django.contrib.sessions.backend.db'):
         """
         Removes the authenticated user's cookies and session object.
 
         Causes the authenticated user to be logged out.
         """
         request = HttpRequest()
-        engine = import_module(settings.SESSION_ENGINE)
+        engine = import_module(session_engine)
         UserModel = get_user_model()
         if self.session:
             request.session = self.session

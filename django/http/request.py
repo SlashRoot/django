@@ -12,7 +12,7 @@ except ImportError:
     from urllib import urlencode, quote
     from urlparse import parse_qsl, urljoin
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.core import signing
 from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from django.core.files import uploadhandler
@@ -53,10 +53,11 @@ class HttpRequest(object):
     def __repr__(self):
         return build_request_repr(self)
 
-    def get_host(self):
+    @uses_settings({'USE_X_FORWARDED_HOST':'use_x_forwarded_host', 'DEBUG':'debug', 'ALLOWED_HOSTS':'allowed_hosts'})
+    def get_host(self, use_x_forwarded_host=False, debug=False, allowed_hosts=[]):
         """Returns the HTTP host using the environment or request headers."""
         # We try three options, in order of decreasing preference.
-        if settings.USE_X_FORWARDED_HOST and (
+        if use_x_forwarded_host and (
             'HTTP_X_FORWARDED_HOST' in self.META):
             host = self.META['HTTP_X_FORWARDED_HOST']
         elif 'HTTP_HOST' in self.META:
@@ -69,11 +70,11 @@ class HttpRequest(object):
                 host = '%s:%s' % (host, server_port)
 
         # There is no hostname validation when DEBUG=True
-        if settings.DEBUG:
+        if debug:
             return host
 
         domain, port = split_domain_port(host)
-        if domain and validate_host(domain, settings.ALLOWED_HOSTS):
+        if domain and validate_host(domain, allowed_hosts):
             return host
         else:
             msg = "Invalid HTTP_HOST header: %r." % host
@@ -128,11 +129,12 @@ class HttpRequest(object):
     def _is_secure(self):
         return os.environ.get("HTTPS") == "on"
 
-    def is_secure(self):
+    @uses_settings({'SECURE_PROXY_SSL_HEADER':'secure_proxy_ssl_header'})
+    def is_secure(self, secure_proxy_ssl_header=None):
         # First, check the SECURE_PROXY_SSL_HEADER setting.
-        if settings.SECURE_PROXY_SSL_HEADER:
+        if secure_proxy_ssl_header:
             try:
-                header, value = settings.SECURE_PROXY_SSL_HEADER
+                header, value = secure_proxy_ssl_header
             except ValueError:
                 raise ImproperlyConfigured('The SECURE_PROXY_SSL_HEADER setting must be a tuple containing two values.')
             if self.META.get(header, None) == value:
@@ -162,9 +164,10 @@ class HttpRequest(object):
         if hasattr(self, '_post'):
             del self._post
 
-    def _initialize_handlers(self):
+    @uses_settings({'FILE_UPLOAD_HANDLERS':'file_upload_handlers'})
+    def _initialize_handlers(self, file_upload_handlers=('django.core.files.uploadhandler.MemoryFileUploadHandler', 'django.core.files.uploadhandler.TemporaryFileUploadHandler',)):
         self._upload_handlers = [uploadhandler.load_handler(handler, self)
-                                 for handler in settings.FILE_UPLOAD_HANDLERS]
+                                 for handler in file_upload_handlers]
 
     @property
     def upload_handlers(self):
@@ -285,10 +288,11 @@ class QueryDict(MultiValueDict):
     _mutable = True
     _encoding = None
 
-    def __init__(self, query_string, mutable=False, encoding=None):
+    @uses_settings({'DEFAULT_CHARSET':'default_charset'})
+    def __init__(self, query_string, mutable=False, encoding=None, default_charset='utf-8'):
         super(QueryDict, self).__init__()
         if not encoding:
-            encoding = settings.DEFAULT_CHARSET
+            encoding = default_charset
         self.encoding = encoding
         if six.PY3:
             if isinstance(query_string, bytes):
@@ -306,9 +310,10 @@ class QueryDict(MultiValueDict):
         self._mutable = mutable
 
     @property
-    def encoding(self):
+    @uses_settings({'DEFAULT_CHARSET':'default_charset'}) 
+    def encoding(self, default_charset='utf-8'):
         if self._encoding is None:
-            self._encoding = settings.DEFAULT_CHARSET
+            self._encoding = default_charset
         return self._encoding
 
     @encoding.setter

@@ -2,7 +2,7 @@ from datetime import date, timedelta
 import sys
 import unittest
 
-from django.conf import settings
+from django.utils.unsetting import uses_settings
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.tests.utils import skipIfCustomUser
@@ -34,7 +34,8 @@ class TokenGeneratorTest(TestCase):
         tk2 = p0.make_token(reload)
         self.assertEqual(tk1, tk2)
 
-    def test_timeout(self):
+    @uses_settings({'PASSWORD_RESET_TIMEOUT_DAYS':'password_reset_timeout_days'})
+    def test_timeout(self, password_reset_timeout_days=3):
         """
         Ensure we can use the token after n days, but no greater.
         """
@@ -49,10 +50,10 @@ class TokenGeneratorTest(TestCase):
         user = User.objects.create_user('tokentestuser', 'test2@example.com', 'testpw')
         p0 = PasswordResetTokenGenerator()
         tk1 = p0.make_token(user)
-        p1 = Mocked(date.today() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS))
+        p1 = Mocked(date.today() + timedelta(password_reset_timeout_days))
         self.assertTrue(p1.check_token(user, tk1))
 
-        p2 = Mocked(date.today() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS + 1))
+        p2 = Mocked(date.today() + timedelta(password_reset_timeout_days + 1))
         self.assertFalse(p2.check_token(user, tk1))
 
     @unittest.skipIf(sys.version_info[:2] >= (3, 0), "Unnecessary test with Python 3")

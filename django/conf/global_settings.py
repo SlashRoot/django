@@ -18,11 +18,11 @@ TEMPLATE_DEBUG = False
 DEBUG_PROPAGATE_EXCEPTIONS = False
 
 # Whether to use the "Etag" header. This saves bandwidth but slows down performance.
-USE_ETAGS = False
+#USE_ETAGS = False
 
 # People who get code error notifications.
 # In the format (('Full Name', 'email@example.com'), ('Full Name', 'anotheremail@example.com'))
-ADMINS = ()
+#ADMINS = ()
 
 # Tuple of IP addresses, as strings, that:
 #   * See debug comments, when DEBUG is true
@@ -145,13 +145,13 @@ USE_L10N = False
 
 # Not-necessarily-technical managers of the site. They get broken link
 # notifications and other various emails.
-MANAGERS = ADMINS
+#MANAGERS = ADMINS
 
 # Default content type and charset to use for all HttpResponse objects, if a
 # MIME type isn't manually specified. These are used to construct the
 # Content-Type header.
-DEFAULT_CONTENT_TYPE = 'text/html'
-DEFAULT_CHARSET = 'utf-8'
+#DEFAULT_CONTENT_TYPE = 'text/html'
+#DEFAULT_CHARSET = 'utf-8'
 
 # Encoding of files read from disk (template and initial SQL files).
 FILE_CHARSET = 'utf-8'
@@ -163,7 +163,7 @@ SERVER_EMAIL = 'root@localhost'
 SEND_BROKEN_LINK_EMAILS = False
 
 # Database connection info. If left empty, will default to the dummy backend.
-DATABASES = {}
+#DATABASES = {}
 
 # Classes used to implement DB routing behavior.
 DATABASE_ROUTERS = []
@@ -516,7 +516,7 @@ LOGOUT_URL = '/accounts/logout/'
 LOGIN_REDIRECT_URL = '/accounts/profile/'
 
 # The number of days a password reset link is valid for
-PASSWORD_RESET_TIMEOUT_DAYS = 3
+#PASSWORD_RESET_TIMEOUT_DAYS = 3
 
 # the first hasher in this list is the preferred algorithm.  any
 # password using different algorithms will be converted automatically
@@ -537,7 +537,7 @@ PASSWORD_HASHERS = (
 # SIGNING #
 ###########
 
-SIGNING_BACKEND = 'django.core.signing.TimestampSigner'
+#SIGNING_BACKEND = 'django.core.signing.TimestampSigner'
 
 ########
 # CSRF #
@@ -545,14 +545,14 @@ SIGNING_BACKEND = 'django.core.signing.TimestampSigner'
 
 # Dotted path to callable to be used as view when a request is
 # rejected by the CSRF middleware.
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
+#CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
 
 # Settings for CSRF cookie.
 CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_COOKIE_DOMAIN = None
-CSRF_COOKIE_PATH = '/'
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_HTTPONLY = False
+#CSRF_COOKIE_DOMAIN = None
+#CSRF_COOKIE_PATH = '/'
+#CSRF_COOKIE_SECURE = False
+#CSRF_COOKIE_HTTPONLY = False
 
 ############
 # MESSAGES #
@@ -590,29 +590,29 @@ TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 ############
 
 # The list of directories to search for fixtures
-FIXTURE_DIRS = ()
+#FIXTURE_DIRS = ()
 
 ###############
 # STATICFILES #
 ###############
 
 # A list of locations of additional static files
-STATICFILES_DIRS = ()
+#STATICFILES_DIRS = ()
 
 # The default file storage backend used during the build process
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+#STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # List of finder classes that know how to find static files in
 # various locations.
-STATICFILES_FINDERS = (
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+#STATICFILES_FINDERS = (
+#    'django.contrib.staticfiles.finders.FileSystemFinder',
+#    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
-)
+#)
 
 ##############
 # MIGRATIONS #
 ##############
 
 # Migration module overrides for apps, by app label.
-MIGRATION_MODULES = {}
+#MIGRATION_MODULES = {}
